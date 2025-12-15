@@ -153,8 +153,15 @@
         ctx.strokeStyle = "#1f2937";
         ctx.lineWidth = 1;
         const step = scale;
-        const startX = -pan.x % step;
-        const startY = -pan.y % step;
+        
+        // Calculate the board origin in screen coordinates
+        const originX = canvas.width / 2 + pan.x;
+        const originY = canvas.height / 2 + pan.y;
+        
+        // Find the first grid line to the left/top of the viewport
+        const startX = originX % step;
+        const startY = originY % step;
+        
         for (let x = startX; x < canvas.width; x += step) {
           ctx.beginPath();
           ctx.moveTo(x, 0);
@@ -432,13 +439,26 @@
 
       // Minimap drag handlers
       minimap.addEventListener("mousedown", (e) => {
-        minimapDragging = true;
+        if (!minimap._mmScale) return;
+        
         const rect = minimap.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+        
+        // Convert minimap click to world coordinates
+        const worldX = (clickX - minimap.width / 2) / minimap._mmScale + minimap._centerX;
+        const worldY = -((clickY - minimap.height / 2) / minimap._mmScale) + minimap._centerY;
+        
+        // Set this world position as the center of the main view
+        pan.x = -worldX * scale;
+        pan.y = worldY * scale;
+        
+        draw();
+        
+        minimapDragging = true;
         minimapDragStart = {
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top,
-          panX: pan.x,
-          panY: pan.y,
+          x: clickX,
+          y: clickY,
         };
       });
 
@@ -453,16 +473,13 @@
         const currentX = e.clientX - rect.left;
         const currentY = e.clientY - rect.top;
         
-        const dx = currentX - minimapDragStart.x;
-        const dy = currentY - minimapDragStart.y;
+        // Convert current position to world coordinates
+        const worldX = (currentX - minimap.width / 2) / minimap._mmScale + minimap._centerX;
+        const worldY = -((currentY - minimap.height / 2) / minimap._mmScale) + minimap._centerY;
         
-        // Convert minimap pixel movement to world coordinates
-        const worldDx = dx / minimap._mmScale;
-        const worldDy = -dy / minimap._mmScale;
-        
-        // Update pan to move the view
-        pan.x = minimapDragStart.panX - worldDx * scale;
-        pan.y = minimapDragStart.panY - worldDy * scale;
+        // Set as center of main view
+        pan.x = -worldX * scale;
+        pan.y = worldY * scale;
         
         draw();
       });
@@ -482,11 +499,27 @@
         draw();
       }
 
+      function applyBoardState(state) {
+        seq = BigInt(state.server_seq);
+        stones.clear();
+        for (const cell of state.cells || []) {
+          stones.set(`${cell.x},${cell.y}`, {
+            x: BigInt(cell.x),
+            y: BigInt(cell.y),
+            color: Number(cell.color),
+          });
+        }
+        draw();
+        log(`loaded ${state.cells?.length || 0} stones from server`);
+      }
+
       function connect() {
         ws = new WebSocket(`ws://${location.host}/ws`);
         ws.onopen = () => {
           statusEl.textContent = "Connected";
           log("connected to server");
+          // Request initial board state
+          ws.send(JSON.stringify({ type: "get_state" }));
         };
         ws.onclose = () => {
           statusEl.textContent = "Disconnected";
@@ -496,7 +529,9 @@
         ws.onmessage = (ev) => {
           try {
             const msg = JSON.parse(ev.data);
-            if (msg.type === "delta_update" && msg.delta_update) {
+            if (msg.type === "board_state" && msg.board_state) {
+              applyBoardState(msg.board_state);
+            } else if (msg.type === "delta_update" && msg.delta_update) {
               applyDelta(msg.delta_update);
             } else if (msg.type === "move_result" && msg.move_result) {
               const res = msg.move_result;

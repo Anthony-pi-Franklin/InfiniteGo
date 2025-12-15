@@ -14,6 +14,10 @@ type MoveRequest struct {
 	Color  Color `json:"color"`
 }
 
+type GetStateRequest struct {
+	Player *Client
+}
+
 type MoveResult struct {
 	Accepted  bool   `json:"accepted"`
 	Reason    string `json:"reason,omitempty"`
@@ -28,10 +32,16 @@ type DeltaUpdate struct {
 	ServerSeq uint64 `json:"server_seq"`
 }
 
+type BoardState struct {
+	Cells     []Cell `json:"cells"`
+	ServerSeq uint64 `json:"server_seq"`
+}
+
 type Envelope struct {
 	Type        string       `json:"type"`
 	MoveResult  *MoveResult  `json:"move_result,omitempty"`
 	DeltaUpdate *DeltaUpdate `json:"delta_update,omitempty"`
+	BoardState  *BoardState  `json:"board_state,omitempty"`
 }
 
 type coord struct {
@@ -39,18 +49,20 @@ type coord struct {
 }
 
 type Room struct {
-	Inbox   chan MoveRequest
-	Chunks  map[ChunkID]*Chunk
-	Seq     uint64
-	clients map[*Client]struct{}
-	clMu    sync.RWMutex
+	Inbox        chan MoveRequest
+	StateInbox   chan GetStateRequest
+	Chunks       map[ChunkID]*Chunk
+	Seq          uint64
+	clients      map[*Client]struct{}
+	clMu         sync.RWMutex
 }
 
 func NewRoom() *Room {
 	return &Room{
-		Inbox:   make(chan MoveRequest, 1024),
-		Chunks:  make(map[ChunkID]*Chunk),
-		clients: make(map[*Client]struct{}),
+		Inbox:      make(chan MoveRequest, 1024),
+		StateInbox: make(chan GetStateRequest, 64),
+		Chunks:     make(map[ChunkID]*Chunk),
+		clients:    make(map[*Client]struct{}),
 	}
 }
 
@@ -59,6 +71,11 @@ func (r *Room) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
+		case req := <-r.StateInbox:
+			state := r.GetBoardState()
+			if req.Player != nil {
+				req.Player.sendEnvelope(Envelope{Type: "board_state", BoardState: &state})
+			}
 		case req := <-r.Inbox:
 			result := r.ProcessMove(req)
 			if req.Player != nil {
@@ -101,6 +118,13 @@ func (r *Room) removeClient(c *Client) {
 	r.clMu.Lock()
 	defer r.clMu.Unlock()
 	delete(r.clients, c)
+}
+
+func (r *Room) GetBoardState() BoardState {
+	return BoardState{
+		Cells:     r.getAllCells(),
+		ServerSeq: r.Seq,
+	}
 }
 
 func (r *Room) neighbors4(x, y int64) [4]coord {

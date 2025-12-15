@@ -110,3 +110,19 @@ func (r *Room) hasStone(x, y int64) bool {
 	_, ok := r.getCell(x, y)
 	return ok
 }
+
+func (r *Room) getAllCells() []Cell {
+	var cells []Cell
+	for chunkID, chunk := range r.Chunks {
+		baseX := int64(chunkID.X) << chunkBits
+		baseY := int64(chunkID.Y) << chunkBits
+		for idx, color := range chunk.Cells {
+			localX := int64((idx >> chunkBits) & chunkSizeMask)
+			localY := int64(idx & chunkSizeMask)
+			x := baseX + localX
+			y := baseY + localY
+			cells = append(cells, Cell{X: x, Y: y, Color: color})
+		}
+	}
+	return cells
+}

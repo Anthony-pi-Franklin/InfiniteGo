@@ -55,6 +55,7 @@ func (c *Client) readPump(ctx context.Context, cancel context.CancelFunc) {
 			return
 		}
 		var payload struct {
+			Type  string      `json:"type"`
 			X     json.Number `json:"x"`
 			Y     json.Number `json:"y"`
 			Color int         `json:"color"`
@@ -63,6 +64,18 @@ func (c *Client) readPump(ctx context.Context, cancel context.CancelFunc) {
 			c.sendError("invalid_payload")
 			continue
 		}
+		
+		// Handle state request
+		if payload.Type == "get_state" {
+			select {
+			case c.room.StateInbox <- GetStateRequest{Player: c}:
+			case <-ctx.Done():
+				return
+			}
+			continue
+		}
+		
+		// Handle move request
 		x, errX := strconv.ParseInt(payload.X.String(), 10, 64)
 		y, errY := strconv.ParseInt(payload.Y.String(), 10, 64)
 		if errX != nil || errY != nil {
