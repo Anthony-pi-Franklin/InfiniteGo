@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InfiniteGo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="dot"></div>
+        <div>
+          <div class="title">InfiniteGo</div>
+          <div class="subtitle">实时快速落子</div>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>小地图</span>
+          <span class="value" id="minimapScaleLabel">100%</span>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="minimapScale" min="0.6" max="2.0" step="0.1" value="1.0">
+        </div>
+      </div>
+
+      <canvas id="minimap" width="200" height="200"></canvas>
+
+      <div class="hints">
+        <p>滚轮缩放主地图，鼠标靠近边缘自动平移。</p>
+        <p>点击落子，拖动小地图调整视野。</p>
+      </div>
+    </aside>
+
+    <main class="board-wrapper">
+      <canvas id="board"></canvas>
+      <div class="edge-hint">将鼠标移动到边缘以平移视野</div>
+    </main>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

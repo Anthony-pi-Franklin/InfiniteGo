@@ -1,0 +1,123 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #0f1013;
+  color: #f5f5f5;
+  height: 100vh;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  background: #13151b;
+  border-right: 1px solid #1f2230;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.brand .dot {
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(135deg, #0ae9d9, #6b7bff);
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(0, 255, 225, 0.6);
+}
+
+.brand .title {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.brand .subtitle {
+  font-size: 12px;
+  color: #9097a6;
+}
+
+.control-group {
+  background: #0f1118;
+  border: 1px solid #1c2234;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.control-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #cfd4e4;
+}
+
+.control-label .value {
+  color: #6be6d9;
+  font-variant-numeric: tabular-nums;
+}
+
+.slider-row input[type="range"] {
+  width: 100%;
+  accent-color: #6be6d9;
+}
+
+#minimap {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #1c2234;
+  background: #0d0f15;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.hints {
+  font-size: 13px;
+  color: #a6adba;
+  line-height: 1.5;
+  background: #0f1118;
+  border: 1px solid #1c2234;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.board-wrapper {
+  position: relative;
+  background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.05), transparent 35%),
+              radial-gradient(circle at 80% 40%, rgba(0, 255, 170, 0.04), transparent 40%),
+              #0f1013;
+}
+
+#board {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+
+.edge-hint {
+  position: absolute;
+  bottom: 12px;
+  right: 16px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #cfd4e4;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  font-size: 13px;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}

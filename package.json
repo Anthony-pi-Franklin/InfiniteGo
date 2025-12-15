@@ -1,0 +1,12 @@
+{
+  "name": "infinitego",
+  "version": "1.0.0",
+  "description": "实时多人快速对弈的超大棋盘围棋体验。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
