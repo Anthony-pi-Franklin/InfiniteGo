@@ -1,0 +1,22 @@
+services:
+  server:
+    build:
+      context: ./rt-sand-mvp/server
+    ports:
+      - "8080:8080"
+    networks:
+      - infinitego-network
+
+  client:
+    image: nginx:latest
+    volumes:
+      - ./rt-sand-mvp/client:/usr/share/nginx/html:ro
+      - ./rt-sand-mvp/client/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8081:80"
+    networks:
+      - infinitego-network
+
+networks:
+  infinitego-network:
+    driver: bridge

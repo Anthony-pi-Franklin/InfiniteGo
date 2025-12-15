@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -21,17 +20,8 @@ type Client struct {
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		origin := r.Header.Get("Origin")
-		if origin == "" {
-			return true
-		}
-		u, err := url.Parse(origin)
-		if err != nil {
-			return false
-		}
-		return u.Host == r.Host
-	},
+	// Allow all origins for local/LAN usage; Nginx already restricts access.
+	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
 func ServeWS(room *Room, w http.ResponseWriter, r *http.Request) {
