@@ -15,3 +15,17 @@ InfiniteGo is a real-time, multiplayer, ultra-large-scale board game inspired by
 5. Expandable architecture: Clean separation between game logic, networking, and client rendering allows future performance upgrades or additional features.
 
 InfiniteGo is ideal for experimenting with large-scale, real-time board mechanics while keeping gameplay intuitive and responsive.
+
+## RT-Sand MVP Layout
+
+- `rt-sand-mvp/server`: Go single-room authoritative server with sparse chunk storage and WebSocket endpoint.
+- `rt-sand-mvp/client`: HTML/Canvas client that connects over WebSocket and renders stones with pan/zoom.
+- `rt-sand-mvp/protocol`: Protobuf definition for move/result/delta messages.
+
+### Run locally
+
+```bash
+cd rt-sand-mvp/server
+go run ./cmd
+# open http://localhost:8080 in a browser
+```

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RT-Sand MVP</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        display: flex;
+        height: 100vh;
+      }
+      #sidebar {
+        width: 240px;
+        background: #10141a;
+        color: #eef1f5;
+        padding: 16px;
+        box-sizing: border-box;
+      }
+      #canvas-container {
+        flex: 1;
+        position: relative;
+        background: #0b0f14;
+        overflow: hidden;
+      }
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        background: #0b0f14;
+      }
+      .log {
+        height: 200px;
+        overflow-y: auto;
+        background: #0f1722;
+        padding: 8px;
+        font-size: 12px;
+        border-radius: 4px;
+        margin-top: 12px;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+      }
+      button {
+        padding: 8px 12px;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:disabled {
+        background: #475569;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sidebar">
+      <h3>RT-Sand MVP</h3>
+      <label>
+        Color
+        <select id="color">
+          <option value="0">Black</option>
+          <option value="1">White</option>
+        </select>
+      </label>
+      <label>
+        Scale
+        <input type="range" id="scale" min="6" max="40" value="24" />
+      </label>
+      <button id="reset">Reset view</button>
+      <p id="status">Connecting…</p>
+      <div class="log" id="log"></div>
+    </div>
+    <div id="canvas-container">
+      <canvas id="board"></canvas>
+    </div>
+    <script>
+      const canvas = document.getElementById("board");
+      const ctx = canvas.getContext("2d");
+      const logEl = document.getElementById("log");
+      const statusEl = document.getElementById("status");
+      const colorSel = document.getElementById("color");
+      const scaleInput = document.getElementById("scale");
+      const resetBtn = document.getElementById("reset");
+
+      let scale = parseInt(scaleInput.value, 10);
+      let pan = { x: 0, y: 0 };
+      let dragging = false;
+      let last = { x: 0, y: 0 };
+      let seq = 0n;
+
+      const stones = new Map(); // key => `${x},${y}` ; value {x:bigint,y:bigint,color:number}
+      let ws;
+
+      function log(msg) {
+        const time = new Date().toLocaleTimeString();
+        logEl.innerHTML = `<div>[${time}] ${msg}</div>` + logEl.innerHTML;
+      }
+
+      function resize() {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+        draw();
+      }
+      window.addEventListener("resize", resize);
+      resize();
+
+      function boardToScreen(x, y) {
+        return {
+          x: Number(x) * scale + canvas.width / 2 + pan.x,
+          y: Number(-y) * scale + canvas.height / 2 + pan.y,
+        };
+      }
+
+      function screenToBoard(px, py) {
+        const bx = Math.round((px - canvas.width / 2 - pan.x) / scale);
+        const by = Math.round(-(py - canvas.height / 2 - pan.y) / scale);
+        return { x: BigInt(bx), y: BigInt(by) };
+      }
+
+      function drawGrid() {
+        ctx.strokeStyle = "#1f2937";
+        ctx.lineWidth = 1;
+        const step = scale;
+        const startX = -pan.x % step;
+        const startY = -pan.y % step;
+        for (let x = startX; x < canvas.width; x += step) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, canvas.height);
+          ctx.stroke();
+        }
+        for (let y = startY; y < canvas.height; y += step) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvas.width, y);
+          ctx.stroke();
+        }
+      }
+
+      function drawStones() {
+        for (const [, stone] of stones) {
+          const { x, y } = boardToScreen(stone.x, stone.y);
+          ctx.beginPath();
+          ctx.fillStyle = stone.color === 0 ? "#f9fafb" : "#0f172a";
+          ctx.strokeStyle = "#e5e7eb";
+          ctx.arc(x, y, scale * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+        drawStones();
+        ctx.fillStyle = "#9ca3af";
+        ctx.fillText(`Seq: ${seq.toString()}`, 12, 20);
+      }
+
+      canvas.addEventListener("mousedown", (e) => {
+        dragging = true;
+        last = { x: e.clientX, y: e.clientY };
+      });
+
+      window.addEventListener("mouseup", () => (dragging = false));
+      window.addEventListener("mousemove", (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - last.x;
+        const dy = e.clientY - last.y;
+        pan.x += dx;
+        pan.y += dy;
+        last = { x: e.clientX, y: e.clientY };
+        draw();
+      });
+
+      canvas.addEventListener("click", (e) => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const board = screenToBoard(x, y);
+        const payload = {
+          x: board.x.toString(),
+          y: board.y.toString(),
+          color: parseInt(colorSel.value, 10),
+        };
+        ws.send(JSON.stringify(payload));
+      });
+
+      scaleInput.addEventListener("input", () => {
+        scale = parseInt(scaleInput.value, 10);
+        draw();
+      });
+
+      resetBtn.addEventListener("click", () => {
+        pan = { x: 0, y: 0 };
+        scale = 24;
+        scaleInput.value = "24";
+        draw();
+      });
+
+      function applyDelta(delta) {
+        seq = BigInt(delta.server_seq);
+        for (const cell of delta.removed || []) {
+          stones.delete(`${cell.x},${cell.y}`);
+        }
+        for (const cell of delta.added || []) {
+          stones.set(`${cell.x},${cell.y}`, {
+            x: BigInt(cell.x),
+            y: BigInt(cell.y),
+            color: Number(cell.color),
+          });
+        }
+        draw();
+      }
+
+      function connect() {
+        ws = new WebSocket(`ws://${location.host}/ws`);
+        ws.onopen = () => {
+          statusEl.textContent = "Connected";
+          log("connected to server");
+        };
+        ws.onclose = () => {
+          statusEl.textContent = "Disconnected";
+          log("connection closed, retrying in 2s");
+          setTimeout(connect, 2000);
+        };
+        ws.onmessage = (ev) => {
+          try {
+            const msg = JSON.parse(ev.data);
+            if (msg.type === "delta_update" && msg.delta_update) {
+              applyDelta(msg.delta_update);
+            } else if (msg.type === "move_result" && msg.move_result) {
+              const res = msg.move_result;
+              if (!res.accepted) {
+                log(`move rejected: ${res.reason || "unknown"}`);
+              } else {
+                log(`move accepted (seq ${res.server_seq})`);
+              }
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        };
+      }
+
+      connect();
+      draw();
+    </script>
+  </body>
+</html>
