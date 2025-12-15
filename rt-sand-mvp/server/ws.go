@@ -74,6 +74,16 @@ func (c *Client) readPump(ctx context.Context, cancel context.CancelFunc) {
 			}
 			continue
 		}
+
+		// Handle board reset request
+		if payload.Type == "restart" {
+			select {
+			case c.room.ResetInbox <- ResetRequest{Player: c}:
+			case <-ctx.Done():
+				return
+			}
+			continue
+		}
 		
 		// Handle move request
 		x, errX := strconv.ParseInt(payload.X.String(), 10, 64)

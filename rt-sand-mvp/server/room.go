@@ -18,6 +18,10 @@ type GetStateRequest struct {
 	Player *Client
 }
 
+type ResetRequest struct {
+	Player *Client
+}
+
 type MoveResult struct {
 	Accepted  bool   `json:"accepted"`
 	Reason    string `json:"reason,omitempty"`
@@ -51,6 +55,7 @@ type coord struct {
 type Room struct {
 	Inbox        chan MoveRequest
 	StateInbox   chan GetStateRequest
+	ResetInbox   chan ResetRequest
 	Chunks       map[ChunkID]*Chunk
 	Seq          uint64
 	clients      map[*Client]struct{}
@@ -61,6 +66,7 @@ func NewRoom() *Room {
 	return &Room{
 		Inbox:      make(chan MoveRequest, 1024),
 		StateInbox: make(chan GetStateRequest, 64),
+		ResetInbox: make(chan ResetRequest, 16),
 		Chunks:     make(map[ChunkID]*Chunk),
 		clients:    make(map[*Client]struct{}),
 	}
@@ -74,6 +80,13 @@ func (r *Room) Run(ctx context.Context) {
 		case req := <-r.StateInbox:
 			state := r.GetBoardState()
 			if req.Player != nil {
+				req.Player.sendEnvelope(Envelope{Type: "board_state", BoardState: &state})
+			}
+		case req := <-r.ResetInbox:
+			delta := r.ResetBoard()
+			r.broadcast(delta)
+			if req.Player != nil {
+				state := r.GetBoardState()
 				req.Player.sendEnvelope(Envelope{Type: "board_state", BoardState: &state})
 			}
 		case req := <-r.Inbox:
@@ -123,6 +136,18 @@ func (r *Room) removeClient(c *Client) {
 func (r *Room) GetBoardState() BoardState {
 	return BoardState{
 		Cells:     r.getAllCells(),
+		ServerSeq: r.Seq,
+	}
+}
+
+func (r *Room) ResetBoard() DeltaUpdate {
+	// Capture current stones before clearing
+	removed := r.getAllCells()
+	r.Chunks = make(map[ChunkID]*Chunk)
+	r.Seq++
+	return DeltaUpdate{
+		Removed:   removed,
+		Added:     nil,
 		ServerSeq: r.Seq,
 	}
 }

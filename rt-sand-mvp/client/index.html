@@ -5,35 +5,75 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RT-Sand MVP</title>
     <style>
+      :root {
+        --bg: #0b0f14;
+        --panel: #10141a;
+        --panel-2: #0f1722;
+        --text: #eef1f5;
+        --muted: #9ca3af;
+        --accent: #2563eb;
+        --border: #374151;
+      }
       body {
         margin: 0;
         font-family: Arial, sans-serif;
-        display: flex;
-        height: 100vh;
+        background: var(--bg);
       }
-      #sidebar {
-        width: 240px;
-        background: #10141a;
-        color: #eef1f5;
-        padding: 16px;
-        box-sizing: border-box;
+      #app {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
       }
       #canvas-container {
-        flex: 1;
-        position: relative;
-        background: #0b0f14;
+        position: absolute;
+        inset: 0;
+        background: var(--bg);
         overflow: hidden;
       }
       canvas {
         width: 100%;
         height: 100%;
         display: block;
-        background: #0b0f14;
+        background: var(--bg);
+      }
+      #sidebar-toggle {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        z-index: 10;
+        padding: 8px 12px;
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      #sidebar {
+        position: absolute;
+        top: 56px;
+        left: 16px;
+        width: 260px;
+        max-height: calc(100vh - 72px);
+        background: var(--panel);
+        color: var(--text);
+        padding: 16px;
+        box-sizing: border-box;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        overflow-y: auto;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+        z-index: 9;
+      }
+      #sidebar.collapsed {
+        transform: translateX(-120%);
+        opacity: 0.0;
+        pointer-events: none;
       }
       .log {
         height: 120px;
         overflow-y: auto;
-        background: #0f1722;
+        background: var(--panel-2);
         padding: 8px;
         font-size: 12px;
         border-radius: 4px;
@@ -43,18 +83,57 @@
         display: block;
         width: 200px;
         height: 200px;
-        background: #0f1722;
-        border: 2px solid #374151;
+        background: var(--panel-2);
+        border: 2px solid var(--border);
         border-radius: 4px;
         margin-top: 12px;
+      }
+      #leaderboard {
+        margin-top: 12px;
+        padding: 8px;
+        background: var(--panel-2);
+        border-radius: 4px;
+      }
+      #leaderboard h4 {
+        margin: 0 0 8px 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      #stats {
+        font-size: 12px;
+        color: #e5e7eb;
+      }
+      #stats div {
+        margin: 4px 0;
+        display: flex;
+        justify-content: space-between;
+      }
+      #stats .color-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+        border: 1px solid #e5e7eb;
       }
       label {
         display: block;
         margin-bottom: 8px;
       }
+      .inline-controls {
+        display: flex;
+        gap: 8px;
+      }
+      .inline-controls label {
+        flex: 1;
+        margin: 0;
+      }
+      .inline-controls select {
+        width: 100%;
+      }
       button {
         padding: 8px 12px;
-        background: #2563eb;
+        background: var(--accent);
         color: white;
         border: none;
         border-radius: 4px;
@@ -64,36 +143,52 @@
         background: #475569;
         cursor: not-allowed;
       }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .row button {
+        flex: 1;
+      }
     </style>
   </head>
   <body>
-    <div id="sidebar">
-      <h3>RT-Sand MVP</h3>
-      <label>
-        Color
-        <select id="color">
-          <option value="0">Black</option>
-          <option value="1">White</option>
-        </select>
-      </label>
-      <label>
-        Placement Mode
-        <select id="placement-mode">
-          <option value="intersection">Intersection (交叉点)</option>
-          <option value="cell">Cell Center (格子内)</option>
-        </select>
-      </label>
-      <label>
-        Minimap Scale
-        <input type="range" id="scale" min="1" max="10" value="3" />
-      </label>
-      <button id="reset">Reset view</button>
-      <p id="status">Connecting…</p>
-      <canvas id="minimap" width="200" height="200"></canvas>
-      <div class="log" id="log"></div>
-    </div>
-    <div id="canvas-container">
-      <canvas id="board"></canvas>
+    <div id="app">
+      <button id="sidebar-toggle">☰ Menu</button>
+      <div id="sidebar" class="open">
+        <h3 style="margin-top:0; margin-bottom:12px;">RT-Sand MVP</h3>
+        <div class="inline-controls" style="margin-bottom:12px;">
+          <label>
+            Color
+            <select id="color">
+              <option value="0">Black</option>
+              <option value="1">White</option>
+            </select>
+          </label>
+          <label>
+            Placement
+            <select id="placement-mode">
+              <option value="intersection">Intersection</option>
+              <option value="cell">Cell Center</option>
+            </select>
+          </label>
+        </div>
+        <div class="row" style="margin-bottom:12px;">
+          <button id="reset">Reset view</button>
+          <button id="restart" style="background:#ef4444;">Restart</button>
+        </div>
+        <p id="status" style="margin: 4px 0 12px 0; color: var(--muted);">Connecting…</p>
+        <div id="leaderboard">
+          <h4>Leaderboard</h4>
+          <div id="stats"></div>
+        </div>
+        <canvas id="minimap" width="200" height="200"></canvas>
+        <div class="log" id="log"></div>
+      </div>
+      <div id="canvas-container">
+        <canvas id="board"></canvas>
+      </div>
     </div>
     <script>
       const canvas = document.getElementById("board");
@@ -103,13 +198,29 @@
       const logEl = document.getElementById("log");
       const statusEl = document.getElementById("status");
       const colorSel = document.getElementById("color");
-      const scaleInput = document.getElementById("scale");
       const placementMode = document.getElementById("placement-mode");
       const resetBtn = document.getElementById("reset");
+      const restartBtn = document.getElementById("restart");
+      const sidebar = document.getElementById("sidebar");
+      const sidebarToggle = document.getElementById("sidebar-toggle");
 
       let scale = 24;
-      let minimapScale = parseInt(scaleInput.value, 10);
+      let minimapScale = 3;
       let pan = { x: 0, y: 0 };
+      
+      // Load saved view state
+      try {
+        const saved = localStorage.getItem('infinitego-view');
+        if (saved) {
+          const state = JSON.parse(saved);
+          pan.x = state.pan?.x || 0;
+          pan.y = state.pan?.y || 0;
+          scale = state.scale || 24;
+        }
+      } catch (e) {
+        console.warn('Failed to load saved view state:', e);
+      }
+      
       let dragging = false;
       let last = { x: 0, y: 0 };
       let seq = 0n;
@@ -197,6 +308,42 @@
         ctx.fillStyle = "#9ca3af";
         ctx.fillText(`Seq: ${seq.toString()}`, 12, 20);
         drawMinimap();
+        updateLeaderboard();
+        saveViewState();
+      }
+
+      function saveViewState() {
+        try {
+          localStorage.setItem('infinitego-view', JSON.stringify({
+            pan: { x: pan.x, y: pan.y },
+            scale: scale,
+          }));
+        } catch (e) {
+          console.warn('Failed to save view state:', e);
+        }
+      }
+
+      function updateLeaderboard() {
+        const stats = {};
+        for (const [, stone] of stones) {
+          const colorName = stone.color === 0 ? 'Black' : 'White';
+          stats[colorName] = (stats[colorName] || 0) + 1;
+        }
+        
+        const statsEl = document.getElementById('stats');
+        const entries = Object.entries(stats).sort((a, b) => b[1] - a[1]);
+        
+        if (entries.length === 0) {
+          statsEl.innerHTML = '<div style="color: #6b7280;">No stones yet</div>';
+        } else {
+          statsEl.innerHTML = entries.map(([color, count]) => {
+            const bgColor = color === 'Black' ? '#0f172a' : '#f9fafb';
+            return `<div>
+              <span><span class="color-indicator" style="background: ${bgColor};"></span>${color}</span>
+              <span><strong>${count}</strong></span>
+            </div>`;
+          }).join('');
+        }
       }
 
       // Edge scrolling logic
@@ -299,10 +446,14 @@
         draw();
       }, { passive: false });
 
-      scaleInput.addEventListener("input", () => {
-        minimapScale = parseInt(scaleInput.value, 10);
+      // Minimap zoom via wheel / trackpad
+      minimap.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const delta = -Math.sign(e.deltaY);
+        const factor = delta > 0 ? 1.1 : 1 / 1.1;
+        minimapScale = Math.max(1, Math.min(10, minimapScale * factor));
         draw();
-      });
+      }, { passive: false });
 
       placementMode.addEventListener("change", () => {
         draw();
@@ -312,8 +463,18 @@
         pan = { x: 0, y: 0 };
         scale = 24;
         minimapScale = 3;
-        scaleInput.value = "3";
         draw();
+      });
+
+      restartBtn.addEventListener("click", () => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "restart" }));
+        }
+      });
+
+      sidebarToggle.addEventListener("click", () => {
+        const collapsed = sidebar.classList.toggle("collapsed");
+        sidebarToggle.textContent = collapsed ? "☰ Menu" : "✕ Hide";
       });
 
       function drawMinimap() {
@@ -351,59 +512,7 @@
         const centerX = (minX + maxX) / 2;
         const centerY = (minY + maxY) / 2;
 
-        // Draw territory (influence areas) with color mixing
-        const territoryMap = new Map();
-        const influenceRadius = 3;
-
-        for (const [, stone] of stones) {
-          const x = Number(stone.x);
-          const y = Number(stone.y);
-          
-          for (let dx = -influenceRadius; dx <= influenceRadius; dx++) {
-            for (let dy = -influenceRadius; dy <= influenceRadius; dy++) {
-              const dist = Math.sqrt(dx * dx + dy * dy);
-              if (dist > influenceRadius) continue;
-              
-              const key = `${x + dx},${y + dy}`;
-              const influence = 1 - (dist / influenceRadius);
-              
-              if (!territoryMap.has(key)) {
-                territoryMap.set(key, { 0: 0, 1: 0 });
-              }
-              territoryMap.get(key)[stone.color] += influence;
-            }
-          }
-        }
-
-        // Draw territory
-        for (const [key, influences] of territoryMap) {
-          const [tx, ty] = key.split(',').map(Number);
-          const screenX = (tx - centerX) * mmScale + minimap.width / 2;
-          const screenY = -(ty - centerY) * mmScale + minimap.height / 2;
-
-          const total = influences[0] + influences[1];
-          const blackRatio = influences[0] / total;
-          
-          let r, g, b, alpha;
-          if (blackRatio > 0.6) {
-            // Black territory
-            r = 15; g = 23; b = 42;
-            alpha = Math.min(0.8, (blackRatio - 0.5) * 2);
-          } else if (blackRatio < 0.4) {
-            // White territory
-            r = 249; g = 250; b = 251;
-            alpha = Math.min(0.8, (0.5 - blackRatio) * 2);
-          } else {
-            // Contested
-            r = 100; g = 100; b = 100;
-            alpha = 0.3;
-          }
-
-          minimapCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-          minimapCtx.fillRect(screenX - 1, screenY - 1, 2, 2);
-        }
-
-        // Draw stones
+        // Draw stones directly
         for (const [, stone] of stones) {
           const x = Number(stone.x);
           const y = Number(stone.y);
@@ -412,8 +521,11 @@
 
           minimapCtx.beginPath();
           minimapCtx.fillStyle = stone.color === 0 ? "#0f172a" : "#f9fafb";
-          minimapCtx.arc(screenX, screenY, Math.max(1, mmScale * 0.4), 0, Math.PI * 2);
+          minimapCtx.strokeStyle = stone.color === 0 ? "#4b5563" : "#d1d5db";
+          minimapCtx.lineWidth = 0.5;
+          minimapCtx.arc(screenX, screenY, Math.max(1.5, mmScale * 0.4), 0, Math.PI * 2);
           minimapCtx.fill();
+          minimapCtx.stroke();
         }
 
         // Draw viewport indicator
