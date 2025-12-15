@@ -21,8 +21,7 @@ class InfiniteGoApp {
     const minimapCanvas = document.getElementById('minimap');
     
     const resize = () => {
-      const sidebar = document.getElementById('sidebar');
-      mainCanvas.width = window.innerWidth - sidebar.offsetWidth;
+      mainCanvas.width = window.innerWidth;
       mainCanvas.height = window.innerHeight;
       minimapCanvas.width = CONFIG.MINIMAP_WIDTH;
       minimapCanvas.height = CONFIG.MINIMAP_HEIGHT;

@@ -39,8 +39,8 @@ export class Renderer {
     this.ctx.strokeStyle = '#333';
     this.ctx.lineWidth = 1;
 
-    const originX = pan.x % step;
-    const originY = pan.y % step;
+    const originX = (width / 2 + pan.x) % step;
+    const originY = (height / 2 + pan.y) % step;
 
     this.ctx.beginPath();
     for (let x = originX; x < width; x += step) {
@@ -55,6 +55,7 @@ export class Renderer {
   }
 
   drawStones() {
+    const { width, height } = this.canvas;
     const { scale, pan, stones, placementMode } = this.state;
     const radius = scale * CONFIG.STONE_RADIUS_RATIO;
 
@@ -64,11 +65,11 @@ export class Renderer {
       
       let sx, sy;
       if (placementMode === 'intersection') {
-        sx = wx * scale + pan.x;
-        sy = wy * scale + pan.y;
+        sx = wx * scale + width / 2 + pan.x;
+        sy = wy * scale + height / 2 + pan.y;
       } else {
-        sx = (wx + 0.5) * scale + pan.x;
-        sy = (wy + 0.5) * scale + pan.y;
+        sx = (wx + 0.5) * scale + width / 2 + pan.x;
+        sy = (wy + 0.5) * scale + height / 2 + pan.y;
       }
 
       this.ctx.fillStyle = CONFIG.STONE_COLORS[stone.color] || CONFIG.STONE_COLORS[0];
@@ -82,30 +83,32 @@ export class Renderer {
   }
 
   screenToWorld(screenX, screenY) {
+    const { width, height } = this.canvas;
     const { scale, pan, placementMode } = this.state;
     let wx, wy;
 
     if (placementMode === 'intersection') {
-      wx = Math.round((screenX - pan.x) / scale);
-      wy = Math.round((screenY - pan.y) / scale);
+      wx = Math.round((screenX - width / 2 - pan.x) / scale);
+      wy = Math.round((screenY - height / 2 - pan.y) / scale);
     } else {
-      wx = Math.floor((screenX - pan.x) / scale);
-      wy = Math.floor((screenY - pan.y) / scale);
+      wx = Math.floor((screenX - width / 2 - pan.x) / scale);
+      wy = Math.floor((screenY - height / 2 - pan.y) / scale);
     }
 
     return { x: wx, y: wy };
   }
 
   worldToScreen(worldX, worldY) {
+    const { width, height } = this.canvas;
     const { scale, pan, placementMode } = this.state;
     let sx, sy;
 
     if (placementMode === 'intersection') {
-      sx = worldX * scale + pan.x;
-      sy = worldY * scale + pan.y;
+      sx = worldX * scale + width / 2 + pan.x;
+      sy = worldY * scale + height / 2 + pan.y;
     } else {
-      sx = (worldX + 0.5) * scale + pan.x;
-      sy = (worldY + 0.5) * scale + pan.y;
+      sx = (worldX + 0.5) * scale + width / 2 + pan.x;
+      sy = (worldY + 0.5) * scale + height / 2 + pan.y;
     }
 
     return { x: sx, y: sy };
