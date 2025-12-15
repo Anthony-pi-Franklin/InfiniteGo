@@ -146,7 +146,7 @@
         for (const [, stone] of stones) {
           const { x, y } = boardToScreen(stone.x, stone.y);
           ctx.beginPath();
-          ctx.fillStyle = stone.color === 0 ? "#f9fafb" : "#0f172a";
+          ctx.fillStyle = stone.color === 0 ? "#0f172a" : "#f9fafb";
           ctx.strokeStyle = "#e5e7eb";
           ctx.arc(x, y, scale * 0.45, 0, Math.PI * 2);
           ctx.fill();
