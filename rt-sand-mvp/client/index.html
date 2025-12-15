@@ -31,11 +31,20 @@
         background: #0b0f14;
       }
       .log {
-        height: 200px;
+        height: 120px;
         overflow-y: auto;
         background: #0f1722;
         padding: 8px;
         font-size: 12px;
+        border-radius: 4px;
+        margin-top: 12px;
+      }
+      #minimap {
+        display: block;
+        width: 200px;
+        height: 200px;
+        background: #0f1722;
+        border: 2px solid #374151;
         border-radius: 4px;
         margin-top: 12px;
       }
@@ -68,11 +77,19 @@
         </select>
       </label>
       <label>
-        Scale
-        <input type="range" id="scale" min="6" max="40" value="24" />
+        Placement Mode
+        <select id="placement-mode">
+          <option value="intersection">Intersection (交叉点)</option>
+          <option value="cell">Cell Center (格子内)</option>
+        </select>
+      </label>
+      <label>
+        Minimap Scale
+        <input type="range" id="scale" min="1" max="10" value="3" />
       </label>
       <button id="reset">Reset view</button>
       <p id="status">Connecting…</p>
+      <canvas id="minimap" width="200" height="200"></canvas>
       <div class="log" id="log"></div>
     </div>
     <div id="canvas-container">
@@ -81,17 +98,25 @@
     <script>
       const canvas = document.getElementById("board");
       const ctx = canvas.getContext("2d");
+      const minimap = document.getElementById("minimap");
+      const minimapCtx = minimap.getContext("2d");
       const logEl = document.getElementById("log");
       const statusEl = document.getElementById("status");
       const colorSel = document.getElementById("color");
       const scaleInput = document.getElementById("scale");
+      const placementMode = document.getElementById("placement-mode");
       const resetBtn = document.getElementById("reset");
 
-      let scale = parseInt(scaleInput.value, 10);
+      let scale = 24;
+      let minimapScale = parseInt(scaleInput.value, 10);
       let pan = { x: 0, y: 0 };
       let dragging = false;
       let last = { x: 0, y: 0 };
       let seq = 0n;
+      let edgeScrollActive = false;
+      let edgeScrollInterval = null;
+      let minimapDragging = false;
+      let minimapDragStart = { x: 0, y: 0 };
 
       const stones = new Map(); // key => `${x},${y}` ; value {x:bigint,y:bigint,color:number}
       let ws;
@@ -117,8 +142,10 @@
       }
 
       function screenToBoard(px, py) {
-        const bx = Math.round((px - canvas.width / 2 - pan.x) / scale);
-        const by = Math.round(-(py - canvas.height / 2 - pan.y) / scale);
+        const mode = placementMode.value;
+        const offset = mode === "cell" ? scale / 2 : 0;
+        const bx = Math.round((px - canvas.width / 2 - pan.x - offset) / scale);
+        const by = Math.round(-(py - canvas.height / 2 - pan.y - offset) / scale);
         return { x: BigInt(bx), y: BigInt(by) };
       }
 
@@ -143,12 +170,14 @@
       }
 
       function drawStones() {
+        const mode = placementMode.value;
+        const offset = mode === "cell" ? scale / 2 : 0;
         for (const [, stone] of stones) {
           const { x, y } = boardToScreen(stone.x, stone.y);
           ctx.beginPath();
           ctx.fillStyle = stone.color === 0 ? "#0f172a" : "#f9fafb";
           ctx.strokeStyle = "#e5e7eb";
-          ctx.arc(x, y, scale * 0.45, 0, Math.PI * 2);
+          ctx.arc(x + offset, y + offset, scale * 0.45, 0, Math.PI * 2);
           ctx.fill();
           ctx.stroke();
         }
@@ -160,6 +189,44 @@
         drawStones();
         ctx.fillStyle = "#9ca3af";
         ctx.fillText(`Seq: ${seq.toString()}`, 12, 20);
+        drawMinimap();
+      }
+
+      // Edge scrolling logic
+      function handleEdgeScroll(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const edgeThreshold = 100;
+        const maxSpeed = 20;
+
+        let dx = 0, dy = 0;
+
+        if (x < edgeThreshold) {
+          dx = maxSpeed * (1 - x / edgeThreshold);
+        } else if (x > canvas.width - edgeThreshold) {
+          dx = -maxSpeed * (1 - (canvas.width - x) / edgeThreshold);
+        }
+
+        if (y < edgeThreshold) {
+          dy = maxSpeed * (1 - y / edgeThreshold);
+        } else if (y > canvas.height - edgeThreshold) {
+          dy = -maxSpeed * (1 - (canvas.height - y) / edgeThreshold);
+        }
+
+        if (dx !== 0 || dy !== 0) {
+          if (!edgeScrollActive) {
+            edgeScrollActive = true;
+            edgeScrollInterval = setInterval(() => {
+              pan.x += dx;
+              pan.y += dy;
+              draw();
+            }, 16);
+          }
+        } else if (edgeScrollActive) {
+          clearInterval(edgeScrollInterval);
+          edgeScrollActive = false;
+        }
       }
 
       canvas.addEventListener("mousedown", (e) => {
@@ -168,7 +235,19 @@
       });
 
       window.addEventListener("mouseup", () => (dragging = false));
+      
       window.addEventListener("mousemove", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const inCanvas = e.clientX >= rect.left && e.clientX <= rect.right &&
+                         e.clientY >= rect.top && e.clientY <= rect.bottom;
+        
+        if (inCanvas) {
+          handleEdgeScroll(e);
+        } else if (edgeScrollActive) {
+          clearInterval(edgeScrollInterval);
+          edgeScrollActive = false;
+        }
+
         if (!dragging) return;
         const dx = e.clientX - last.x;
         const dy = e.clientY - last.y;
@@ -192,15 +271,199 @@
         ws.send(JSON.stringify(payload));
       });
 
+      // Mouse wheel zoom
+      canvas.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const delta = -Math.sign(e.deltaY);
+        const zoomFactor = 1.1;
+        const oldScale = scale;
+        scale = delta > 0 ? scale * zoomFactor : scale / zoomFactor;
+        scale = Math.max(6, Math.min(80, scale));
+
+        // Zoom toward mouse position
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const worldX = (mouseX - canvas.width / 2 - pan.x) / oldScale;
+        const worldY = (mouseY - canvas.height / 2 - pan.y) / oldScale;
+        pan.x = mouseX - canvas.width / 2 - worldX * scale;
+        pan.y = mouseY - canvas.height / 2 - worldY * scale;
+
+        draw();
+      }, { passive: false });
+
       scaleInput.addEventListener("input", () => {
-        scale = parseInt(scaleInput.value, 10);
+        minimapScale = parseInt(scaleInput.value, 10);
+        draw();
+      });
+
+      placementMode.addEventListener("change", () => {
         draw();
       });
 
       resetBtn.addEventListener("click", () => {
         pan = { x: 0, y: 0 };
         scale = 24;
-        scaleInput.value = "24";
+        minimapScale = 3;
+        scaleInput.value = "3";
+        draw();
+      });
+
+      function drawMinimap() {
+        minimapCtx.clearRect(0, 0, minimap.width, minimap.height);
+        minimapCtx.fillStyle = "#0b0f14";
+        minimapCtx.fillRect(0, 0, minimap.width, minimap.height);
+
+        if (stones.size === 0) return;
+
+        // Calculate bounds of all stones
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+        for (const [, stone] of stones) {
+          const x = Number(stone.x);
+          const y = Number(stone.y);
+          minX = Math.min(minX, x);
+          maxX = Math.max(maxX, x);
+          minY = Math.min(minY, y);
+          maxY = Math.max(maxY, y);
+        }
+
+        // Add padding
+        const padding = 5;
+        minX -= padding;
+        maxX += padding;
+        minY -= padding;
+        maxY += padding;
+
+        const rangeX = maxX - minX || 1;
+        const rangeY = maxY - minY || 1;
+        const scaleX = (minimap.width - 20) / rangeX;
+        const scaleY = (minimap.height - 20) / rangeY;
+        const mmScale = Math.min(scaleX, scaleY) * minimapScale / 3;
+
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+
+        // Draw territory (influence areas) with color mixing
+        const territoryMap = new Map();
+        const influenceRadius = 3;
+
+        for (const [, stone] of stones) {
+          const x = Number(stone.x);
+          const y = Number(stone.y);
+          
+          for (let dx = -influenceRadius; dx <= influenceRadius; dx++) {
+            for (let dy = -influenceRadius; dy <= influenceRadius; dy++) {
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist > influenceRadius) continue;
+              
+              const key = `${x + dx},${y + dy}`;
+              const influence = 1 - (dist / influenceRadius);
+              
+              if (!territoryMap.has(key)) {
+                territoryMap.set(key, { 0: 0, 1: 0 });
+              }
+              territoryMap.get(key)[stone.color] += influence;
+            }
+          }
+        }
+
+        // Draw territory
+        for (const [key, influences] of territoryMap) {
+          const [tx, ty] = key.split(',').map(Number);
+          const screenX = (tx - centerX) * mmScale + minimap.width / 2;
+          const screenY = -(ty - centerY) * mmScale + minimap.height / 2;
+
+          const total = influences[0] + influences[1];
+          const blackRatio = influences[0] / total;
+          
+          let r, g, b, alpha;
+          if (blackRatio > 0.6) {
+            // Black territory
+            r = 15; g = 23; b = 42;
+            alpha = Math.min(0.8, (blackRatio - 0.5) * 2);
+          } else if (blackRatio < 0.4) {
+            // White territory
+            r = 249; g = 250; b = 251;
+            alpha = Math.min(0.8, (0.5 - blackRatio) * 2);
+          } else {
+            // Contested
+            r = 100; g = 100; b = 100;
+            alpha = 0.3;
+          }
+
+          minimapCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+          minimapCtx.fillRect(screenX - 1, screenY - 1, 2, 2);
+        }
+
+        // Draw stones
+        for (const [, stone] of stones) {
+          const x = Number(stone.x);
+          const y = Number(stone.y);
+          const screenX = (x - centerX) * mmScale + minimap.width / 2;
+          const screenY = -(y - centerY) * mmScale + minimap.height / 2;
+
+          minimapCtx.beginPath();
+          minimapCtx.fillStyle = stone.color === 0 ? "#0f172a" : "#f9fafb";
+          minimapCtx.arc(screenX, screenY, Math.max(1, mmScale * 0.4), 0, Math.PI * 2);
+          minimapCtx.fill();
+        }
+
+        // Draw viewport indicator
+        const viewCenterX = -pan.x / scale;
+        const viewCenterY = pan.y / scale;
+        const viewWidth = canvas.width / scale;
+        const viewHeight = canvas.height / scale;
+        
+        const vx = (viewCenterX - centerX) * mmScale + minimap.width / 2;
+        const vy = -(viewCenterY - centerY) * mmScale + minimap.height / 2;
+        const vw = viewWidth * mmScale;
+        const vh = viewHeight * mmScale;
+
+        minimapCtx.strokeStyle = "#3b82f6";
+        minimapCtx.lineWidth = 2;
+        minimapCtx.strokeRect(vx - vw / 2, vy - vh / 2, vw, vh);
+        
+        // Store minimap transform for dragging
+        minimap._centerX = centerX;
+        minimap._centerY = centerY;
+        minimap._mmScale = mmScale;
+      }
+
+      // Minimap drag handlers
+      minimap.addEventListener("mousedown", (e) => {
+        minimapDragging = true;
+        const rect = minimap.getBoundingClientRect();
+        minimapDragStart = {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+          panX: pan.x,
+          panY: pan.y,
+        };
+      });
+
+      window.addEventListener("mouseup", () => {
+        minimapDragging = false;
+      });
+
+      minimap.addEventListener("mousemove", (e) => {
+        if (!minimapDragging || !minimap._mmScale) return;
+        
+        const rect = minimap.getBoundingClientRect();
+        const currentX = e.clientX - rect.left;
+        const currentY = e.clientY - rect.top;
+        
+        const dx = currentX - minimapDragStart.x;
+        const dy = currentY - minimapDragStart.y;
+        
+        // Convert minimap pixel movement to world coordinates
+        const worldDx = dx / minimap._mmScale;
+        const worldDy = -dy / minimap._mmScale;
+        
+        // Update pan to move the view
+        pan.x = minimapDragStart.panX - worldDx * scale;
+        pan.y = minimapDragStart.panY - worldDy * scale;
+        
         draw();
       });
 
