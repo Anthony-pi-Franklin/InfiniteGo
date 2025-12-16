@@ -112,6 +112,14 @@ class InfiniteGoApp {
     let startX = 0;
     let startWidth = 0;
 
+    // Function to update resize handle position
+    function updateResizeHandlePosition() {
+      if (sidebarResizeHandle && sidebar) {
+        const sidebarWidth = sidebar.offsetWidth;
+        sidebarResizeHandle.style.left = `calc(16px + ${sidebarWidth}px - 5px)`;
+      }
+    }
+
     if (sidebarResizeHandle) {
       sidebarResizeHandle.addEventListener('mousedown', (e) => {
         isResizingSidebar = true;
@@ -125,12 +133,16 @@ class InfiniteGoApp {
           const newWidth = startWidth + (e.clientX - startX);
           const clampedWidth = Math.max(200, Math.min(500, newWidth));
           sidebar.style.width = `${clampedWidth}px`;
+          updateResizeHandlePosition();
         }
       });
 
       window.addEventListener('mouseup', () => {
         isResizingSidebar = false;
       });
+
+      // Initialize handle position
+      updateResizeHandlePosition();
     }
 
     // Color buttons - removed (players locked to their chosen color)

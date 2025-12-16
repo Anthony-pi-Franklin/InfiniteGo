@@ -149,13 +149,12 @@ export class Minimap {
 
     // Canvas interactions for navigation
     this.canvas.addEventListener('mousedown', (e) => {
-      if (this.embedded) return;
       this.dragging = true;
       this.handleDrag(e);
     });
 
     this.canvas.addEventListener('mousemove', (e) => {
-      if (this.dragging && !this.embedded) {
+      if (this.dragging) {
         this.handleDrag(e);
       }
     });
@@ -166,7 +165,6 @@ export class Minimap {
     });
 
     this.canvas.addEventListener('wheel', (e) => {
-      if (this.embedded) return;
       e.preventDefault();
       const factor = e.deltaY < 0 ? CONFIG.ZOOM_FACTOR : 1 / CONFIG.ZOOM_FACTOR;
       const newScale = Math.max(

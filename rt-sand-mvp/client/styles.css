@@ -94,13 +94,20 @@ canvas {
 }
 
 .sidebar-resize-handle {
-  position: absolute;
-  top: 0;
-  right: -4px;
-  width: 8px;
-  height: 100%;
+  position: fixed;
+  top: 16px;
+  left: calc(16px + 280px - 5px);
+  width: 10px;
+  height: calc(100vh - 32px);
   cursor: ew-resize;
   z-index: 25;
+  /* background: red; */
+  transition: transform 0.2s ease, left 0.2s ease;
+}
+
+#sidebar.hidden ~ .sidebar-resize-handle {
+  transform: translateX(-400px);
+  pointer-events: none;
 }
 
 #sidebar.hidden {
@@ -494,6 +501,7 @@ select:focus {
   width: 100% !important;
   height: auto !important;
   margin-bottom: 16px;
+  margin-right: 16px;
   border-radius: 6px;
   padding: 12px;
   left: auto !important;
