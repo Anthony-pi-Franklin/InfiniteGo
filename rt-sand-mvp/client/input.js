@@ -124,22 +124,21 @@ export class InputManager {
 
       let vx = 0, vy = 0;
 
-      // Left edge
+      // Left edge - pan right (positive vx)
       if (mouseX - canvasLeft < threshold) {
-        vx = ((mouseX - canvasLeft) / threshold - 1) * maxSpeed;
+        vx = (1 - (mouseX - canvasLeft) / threshold) * maxSpeed;
       }
-      // Right edge
+      // Right edge - pan left (negative vx)
       else if (canvasRight - mouseX < threshold) {
-        vx = (1 - (canvasRight - mouseX) / threshold) * maxSpeed;
+        vx = -(1 - (canvasRight - mouseX) / threshold) * maxSpeed;
       }
 
-      // Top edge
       if (mouseY - canvasTop < threshold) {
-        vy = ((mouseY - canvasTop) / threshold - 1) * maxSpeed;
+        vy = -((mouseY - canvasTop) / threshold - 1) * maxSpeed;
       }
-      // Bottom edge
+      // Bottom edge - pan up (negative vy)
       else if (canvasBottom - mouseY < threshold) {
-        vy = (1 - (canvasBottom - mouseY) / threshold) * maxSpeed;
+        vy = -(1 - (canvasBottom - mouseY) / threshold) * maxSpeed;
       }
 
       this.edgeScrollVelocity = { x: vx, y: vy };

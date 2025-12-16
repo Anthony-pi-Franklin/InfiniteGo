@@ -8,14 +8,27 @@
   </head>
   <body>
     <div id="app">
+      <button id="menu-toggle" class="menu-toggle">☰</button>
+      
       <div id="sidebar">
-        <h3>InfiniteGo</h3>
+        <div class="sidebar-header">
+          <h3>InfiniteGo</h3>
+          <button id="menu-close" class="menu-close">✕</button>
+        </div>
         
         <div class="section">
           <h4>Color</h4>
           <div class="button-group">
             <button class="color-btn active" data-color="0">●</button>
             <button class="color-btn" data-color="1">●</button>
+            <button class="color-btn" data-color="2">●</button>
+            <button class="color-btn" data-color="3">●</button>
+            <button class="color-btn" data-color="4">●</button>
+            <button class="color-btn" data-color="5">●</button>
+            <button class="color-btn" data-color="6">●</button>
+            <button class="color-btn" data-color="7">●</button>
+            <button class="color-btn" data-color="8">●</button>
+            <button class="color-btn" data-color="9">●</button>
           </div>
         </div>
 
@@ -39,16 +52,16 @@
           <h4>Status</h4>
           <div id="status">Connecting...</div>
         </div>
-
-        <div class="section">
-          <h4>Minimap</h4>
-          <canvas id="minimap"></canvas>
-        </div>
       </div>
 
       <div id="canvas-container">
         <canvas id="canvas"></canvas>
         <div id="seq">Seq: 0</div>
+      </div>
+
+      <div id="minimap-float">
+        <h3>Minimap ▲</h3>
+        <canvas id="minimap"></canvas>
       </div>
 
       <div id="leaderboard-float">

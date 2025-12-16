@@ -26,25 +26,57 @@ export const CONFIG = {
   // Stone rendering
   STONE_RADIUS_RATIO: 0.45,
   
-  // Colors
+// Colors (0-9, 10 total colors)
   COLORS: {
     BLACK: 0,
     WHITE: 1,
+    RED: 2,
+    BLUE: 3,
+    GREEN: 4,
+    YELLOW: 5,
+    PURPLE: 6,
+    ORANGE: 7,
+    CYAN: 8,
+    PINK: 9,
   },
-  
+
   COLOR_NAMES: {
     0: 'Black',
     1: 'White',
+    2: 'Red',
+    3: 'Blue',
+    4: 'Green',
+    5: 'Yellow',
+    6: 'Purple',
+    7: 'Orange',
+    8: 'Cyan',
+    9: 'Pink',
   },
-  
+
   STONE_COLORS: {
-    0: '#0f172a',
-    1: '#f9fafb',
+    0: '#1f2937',
+    1: '#f3f4f6',
+    2: '#ef4444',
+    3: '#3b82f6',
+    4: '#10b981',
+    5: '#eab308',
+    6: '#8b5cf6',
+    7: '#f97316',
+    8: '#06b6d4',
+    9: '#ec4899',
   },
-  
+
   STONE_STROKE_COLORS: {
-    0: '#4b5563',
+    0: '#6b7280',
     1: '#d1d5db',
+    2: '#991b1b',
+    3: '#1e40af',
+    4: '#065f46',
+    5: '#854d0e',
+    6: '#5b21b6',
+    7: '#7c2d12',
+    8: '#164e63',
+    9: '#831843',
   },
   
   // WebSocket

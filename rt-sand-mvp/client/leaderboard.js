@@ -14,17 +14,17 @@ export class Leaderboard {
   }
 
   setupEventListeners() {
-    // Make leaderboard draggable
     const header = this.element.querySelector('h3');
-    
-    header.addEventListener('mousedown', (e) => {
+    // Make entire leaderboard draggable
+    this.element.addEventListener('mousedown', (e) => {
+      // Start dragging
       this.dragging = true;
-      const rect = this.element.getBoundingClientRect();
-      this.dragOffset = {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      };
-      this.element.style.cursor = 'grabbing';
+        const rect = this.element.getBoundingClientRect();
+        this.dragOffset = {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        };
+        this.element.style.cursor = 'grabbing';
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -44,10 +44,12 @@ export class Leaderboard {
     });
 
     // Toggle collapse on double-click
-    header.addEventListener('dblclick', () => {
-      this.collapsed = !this.collapsed;
-      this.update();
-    });
+    if (header) {
+      header.addEventListener('dblclick', () => {
+        this.collapsed = !this.collapsed;
+        this.update();
+      });
+    }
   }
 
   update() {

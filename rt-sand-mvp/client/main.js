@@ -59,6 +59,25 @@ class InfiniteGoApp {
   }
 
   setupControls() {
+    // Menu toggle
+    const menuToggle = document.getElementById('menu-toggle');
+    const menuClose = document.getElementById('menu-close');
+    const sidebar = document.getElementById('sidebar');
+    
+    // Menu toggle button is hidden by default (sidebar shown)
+    menuToggle.classList.remove('visible');
+    sidebar.classList.remove('hidden');
+    
+    menuToggle.addEventListener('click', () => {
+      sidebar.classList.remove('hidden');
+      menuToggle.classList.remove('visible');
+    });
+    
+    menuClose.addEventListener('click', () => {
+      sidebar.classList.add('hidden');
+      menuToggle.classList.add('visible');
+    });
+
     // Color buttons
     document.querySelectorAll('.color-btn').forEach(btn => {
       btn.addEventListener('click', () => {

@@ -36,7 +36,7 @@ export class Renderer {
     const { scale, pan } = this.state;
     const step = scale;
 
-    this.ctx.strokeStyle = '#333';
+    this.ctx.strokeStyle = '#2d3748';
     this.ctx.lineWidth = 1;
 
     const originX = (width / 2 + pan.x) % step;

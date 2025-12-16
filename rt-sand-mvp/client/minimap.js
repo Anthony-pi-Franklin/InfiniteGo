@@ -7,11 +7,53 @@ export class Minimap {
     this.ctx = canvas.getContext('2d');
     this.state = state;
     this.dragging = false;
+    this.windowDragging = false;
+    this.windowDragOffset = { x: 0, y: 0 };
+    this.collapsed = false;
     
     this.setupEventListeners();
   }
 
   setupEventListeners() {
+    // Make floating window draggable
+    const windowEl = document.getElementById('minimap-float');
+    const header = windowEl.querySelector('h3');
+    
+    header.addEventListener('mousedown', (e) => {
+      this.windowDragging = true;
+      const rect = windowEl.getBoundingClientRect();
+      this.windowDragOffset = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+      windowEl.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (this.windowDragging) {
+        windowEl.style.left = `${e.clientX - this.windowDragOffset.x}px`;
+        windowEl.style.top = `${e.clientY - this.windowDragOffset.y}px`;
+        windowEl.style.right = 'auto';
+        windowEl.style.bottom = 'auto';
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (this.windowDragging) {
+        this.windowDragging = false;
+        windowEl.style.cursor = 'move';
+      }
+    });
+
+    // Toggle collapse on double-click
+    header.addEventListener('dblclick', () => {
+      this.collapsed = !this.collapsed;
+      const canvas = windowEl.querySelector('canvas');
+      canvas.style.display = this.collapsed ? 'none' : 'block';
+      header.textContent = `Minimap ${this.collapsed ? '▼' : '▲'}`;
+    });
+
+    // Canvas interactions for navigation
     this.canvas.addEventListener('mousedown', (e) => {
       this.dragging = true;
       this.handleDrag(e);
@@ -70,25 +112,38 @@ export class Minimap {
       const mx = centerX + wx * scale;
       const my = centerY - wy * scale;
 
-      this.ctx.fillStyle = CONFIG.STONE_COLORS[stone.color] || CONFIG.STONE_COLORS[1];
+      this.ctx.fillStyle = CONFIG.STONE_COLORS[stone.color] || '#888';
       this.ctx.fillRect(mx - 1, my - 1, 2, 2);
     }
 
     // Draw viewport rectangle
     const mainCanvas = document.getElementById('canvas');
-    const vpLeft = -this.state.pan.x / this.state.scale;
-    const vpTop = -this.state.pan.y / this.state.scale;
-    const vpRight = (mainCanvas.width - this.state.pan.x) / this.state.scale;
-    const vpBottom = (mainCanvas.height - this.state.pan.y) / this.state.scale;
+    const mainW = mainCanvas.width;
+    const mainH = mainCanvas.height;
+    const mainScale = this.state.scale;
+    const mainPan = this.state.pan;
+    
+    // Main canvas viewport in world coordinates (centered at 0,0)
+    const vpLeft = (-mainW / 2 - mainPan.x) / mainScale;
+    const vpRight = (mainW / 2 - mainPan.x) / mainScale;
+    const vpTop = (mainH / 2 - mainPan.y) / mainScale;
+    const vpBottom = (-mainH / 2 - mainPan.y) / mainScale;
 
+    // Convert to minimap screen coordinates
     const vpScreenLeft = centerX + vpLeft * scale;
-    const vpScreenTop = centerY - vpBottom * scale;
-    const vpScreenWidth = (vpRight - vpLeft) * scale;
-    const vpScreenHeight = (vpBottom - vpTop) * scale;
+    const vpScreenRight = centerX + vpRight * scale;
+    const vpScreenTop = centerY - vpTop * scale;
+    const vpScreenBottom = centerY - vpBottom * scale;
+
+    // Clamp to minimap bounds
+    const clampedLeft = Math.max(0, Math.min(width, vpScreenLeft));
+    const clampedRight = Math.max(0, Math.min(width, vpScreenRight));
+    const clampedTop = Math.max(0, Math.min(height, vpScreenTop));
+    const clampedBottom = Math.max(0, Math.min(height, vpScreenBottom));
 
     this.ctx.strokeStyle = '#0f0';
     this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(vpScreenLeft, vpScreenTop, vpScreenWidth, vpScreenHeight);
+    this.ctx.strokeRect(clampedLeft, clampedTop, clampedRight - clampedLeft, clampedBottom - clampedTop);
   }
 
   start() {
