@@ -18,8 +18,17 @@ var (
 type Color uint8
 
 const (
-	ColorBlack Color = 0
-	ColorWhite Color = 1
+	ColorBlack  Color = 0
+	ColorWhite  Color = 1
+	ColorRed    Color = 2
+	ColorBlue   Color = 3
+	ColorGreen  Color = 4
+	ColorYellow Color = 5
+	ColorPurple Color = 6
+	ColorOrange Color = 7
+	ColorCyan   Color = 8
+	ColorPink   Color = 9
+	// Color type supports 0-255, allowing for many more colors if needed
 )
 
 type Chunk struct {

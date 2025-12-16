@@ -7,31 +7,43 @@ export class NetworkManager {
     this.onStateUpdate = onStateUpdate;
     this.ws = null;
     this.connecting = false;
+    this.roomId = null;
+    this.playerColor = null;
   }
 
-  connect() {
+  connect(roomId, playerColor) {
     if (this.connecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
       return;
     }
 
+    // Store room and color info
+    this.roomId = roomId || 'default';
+    this.playerColor = playerColor !== undefined ? playerColor : 0;
+
     this.connecting = true;
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${location.host}/ws`;
+    // Add room parameter to WebSocket URL
+    const wsUrl = `${protocol}//${location.host}/ws?room=${encodeURIComponent(this.roomId)}`;
 
     this.ws = new WebSocket(wsUrl);
     
     this.ws.onopen = () => {
-      console.log('WebSocket connected');
+      console.log('WebSocket connected to room:', this.roomId);
       this.connecting = false;
+      
+      // Send color selection first
+      this.sendColorSelection(this.playerColor);
+      
+      // Then request initial state
       this.requestState();
-      this.onStateUpdate('status', 'Connected to server');
+      this.onStateUpdate('status', `Connected to room: ${this.roomId}`);
     };
 
     this.ws.onclose = () => {
       console.log('WebSocket disconnected');
       this.connecting = false;
       this.onStateUpdate('status', 'Disconnected. Reconnecting...');
-      setTimeout(() => this.connect(), CONFIG.WS_RECONNECT_DELAY);
+      setTimeout(() => this.connect(this.roomId, this.playerColor), CONFIG.WS_RECONNECT_DELAY);
     };
 
     this.ws.onerror = (err) => {
@@ -51,6 +63,13 @@ export class NetworkManager {
 
   handleMessage(msg) {
     switch (msg.type) {
+      case 'color_selected':
+        if (msg.move_result && msg.move_result.accepted) {
+          console.log('Color selected successfully');
+          this.onStateUpdate('status', `Color selected`);
+        }
+        break;
+
       case 'delta_update':
         if (msg.delta_update) {
           this.state.applyDelta(msg.delta_update);
@@ -84,6 +103,13 @@ export class NetworkManager {
     }
   }
 
+  sendColorSelection(color) {
+    this.send({
+      type: 'select_color',
+      color: Number(color),
+    });
+  }
+
   requestState() {
     this.send({ type: 'get_state' });
   }
@@ -104,5 +130,13 @@ export class NetworkManager {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
     }
+  }
+
+  getRoomId() {
+    return this.roomId;
+  }
+
+  getPlayerColor() {
+    return this.playerColor;
   }
 }

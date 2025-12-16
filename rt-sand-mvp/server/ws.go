@@ -12,28 +12,40 @@ import (
 )
 
 type Client struct {
-	conn *websocket.Conn
-	room *Room
-	send chan []byte
+	conn          *websocket.Conn
+	room          *Room
+	send          chan []byte
+	selectedColor *Color // Player's chosen color (nil if not selected yet)
 }
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	// Allow all origins for local/LAN usage; Nginx already restricts access.
+	// Compatible with both LAN and WAN deployments
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-func ServeWS(room *Room, w http.ResponseWriter, r *http.Request) {
+func ServeWS(roomManager *RoomManager, w http.ResponseWriter, r *http.Request) {
+	// Get room ID from query parameter
+	roomID := r.URL.Query().Get("room")
+	if roomID == "" {
+		roomID = "default"
+	}
+
+	// Get or create the room
+	room := roomManager.GetOrCreateRoom(roomID)
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("upgrade: %v", err)
 		return
 	}
 	client := &Client{
-		conn: conn,
-		room: room,
-		send: make(chan []byte, 64),
+		conn:          conn,
+		room:          room,
+		send:          make(chan []byte, 64),
+		selectedColor: nil, // Will be set when player chooses color
 	}
 	room.addClient(client)
 
@@ -65,6 +77,18 @@ func (c *Client) readPump(ctx context.Context, cancel context.CancelFunc) {
 			continue
 		}
 		
+		// Handle color selection
+		if payload.Type == "select_color" {
+			if payload.Color < 0 || payload.Color > 255 {
+				c.sendError("invalid_color")
+				continue
+			}
+			selectedColor := Color(payload.Color)
+			c.selectedColor = &selectedColor
+			c.sendEnvelope(Envelope{Type: "color_selected", MoveResult: &MoveResult{Accepted: true, ServerSeq: c.room.Seq}})
+			continue
+		}
+		
 		// Handle state request
 		if payload.Type == "get_state" {
 			select {
@@ -85,17 +109,25 @@ func (c *Client) readPump(ctx context.Context, cancel context.CancelFunc) {
 			continue
 		}
 		
-		// Handle move request
+		// Handle move request - player must have selected a color
+		if c.selectedColor == nil {
+			c.sendError("color_not_selected")
+			continue
+		}
+		
+		// Validate that player is using their selected color
+		if payload.Color != int(*c.selectedColor) {
+			c.sendError("must_use_selected_color")
+			continue
+		}
+		
 		x, errX := strconv.ParseInt(payload.X.String(), 10, 64)
 		y, errY := strconv.ParseInt(payload.Y.String(), 10, 64)
 		if errX != nil || errY != nil {
 			c.sendError("invalid_coordinate")
 			continue
 		}
-		if payload.Color != int(ColorBlack) && payload.Color != int(ColorWhite) {
-			c.sendError("invalid_color")
-			continue
-		}
+		
 		req := MoveRequest{
 			Player: c,
 			X:      x,

@@ -1,0 +1,354 @@
+/* Lobby page styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 
+               'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+#lobby-app {
+  width: 100%;
+  max-width: 900px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+/* Header */
+.lobby-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 40px 30px;
+  text-align: center;
+}
+
+.lobby-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.lobby-header .subtitle {
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+/* Main Content */
+.lobby-main {
+  padding: 30px;
+}
+
+section {
+  margin-bottom: 30px;
+}
+
+section h2 {
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+  color: #2c3e50;
+  border-left: 4px solid #667eea;
+  padding-left: 12px;
+}
+
+/* Form Elements */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #555;
+  font-weight: 500;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* Color Picker */
+.color-picker {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.color-option {
+  width: 48px;
+  height: 48px;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.color-option:hover {
+  transform: scale(1.1);
+  border-color: #bbb;
+}
+
+.color-option.active {
+  border-color: #667eea;
+  transform: scale(1.15);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.color-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: block;
+}
+
+/* Buttons */
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: inline-block;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  width: 100%;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+
+.btn-secondary:hover {
+  background: #d5dbdd;
+}
+
+.btn-join {
+  background: #2ecc71;
+  color: white;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+}
+
+.btn-join:hover {
+  background: #27ae60;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
+}
+
+/* Divider */
+.divider {
+  text-align: center;
+  margin: 40px 0;
+  color: #95a5a6;
+  font-weight: 500;
+  position: relative;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: #e0e0e0;
+}
+
+.divider::before {
+  left: 0;
+}
+
+.divider::after {
+  right: 0;
+}
+
+/* Room List */
+.room-list-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.room-count {
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+.room-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 2px solid #ecf0f1;
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.room-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s;
+}
+
+.room-card:hover {
+  background: #e9ecef;
+  transform: translateX(4px);
+}
+
+.room-info h3 {
+  font-size: 1.1rem;
+  color: #2c3e50;
+  margin-bottom: 5px;
+}
+
+.room-players {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+}
+
+.player-icon {
+  margin-right: 5px;
+}
+
+.no-rooms,
+.loading-text,
+.error-text {
+  text-align: center;
+  padding: 40px 20px;
+  color: #95a5a6;
+}
+
+.error-text {
+  color: #e74c3c;
+}
+
+/* Quick Join */
+.quick-join-form {
+  display: flex;
+  gap: 10px;
+}
+
+.quick-join-form input {
+  flex: 1;
+}
+
+.quick-join-form .btn {
+  width: auto;
+  white-space: nowrap;
+}
+
+/* Footer */
+.lobby-footer {
+  background: #f8f9fa;
+  padding: 20px 30px;
+  text-align: center;
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* Scrollbar */
+.room-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.room-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.room-list::-webkit-scrollbar-thumb {
+  background: #bbb;
+  border-radius: 4px;
+}
+
+.room-list::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .lobby-header h1 {
+    font-size: 2rem;
+  }
+
+  .lobby-main {
+    padding: 20px;
+  }
+
+  section h2 {
+    font-size: 1.3rem;
+  }
+
+  .color-option {
+    width: 42px;
+    height: 42px;
+  }
+
+  .color-dot {
+    width: 28px;
+    height: 28px;
+  }
+
+  .room-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .btn-join {
+    width: 100%;
+  }
+
+  .quick-join-form {
+    flex-direction: column;
+  }
+
+  .quick-join-form .btn {
+    width: 100%;
+  }
+}

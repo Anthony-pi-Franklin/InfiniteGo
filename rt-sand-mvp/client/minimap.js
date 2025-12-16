@@ -8,18 +8,54 @@ export class Minimap {
     this.state = state;
     this.dragging = false;
     this.windowDragging = false;
+    this.windowResizing = false;
     this.windowDragOffset = { x: 0, y: 0 };
     this.collapsed = false;
     
     this.setupEventListeners();
   }
 
+  setPosition(windowEl, x, y) {
+    const w = windowEl.offsetWidth;
+    const h = windowEl.offsetHeight;
+    const clampedX = Math.max(0, Math.min(window.innerWidth - w, x));
+    const clampedY = Math.max(0, Math.min(window.innerHeight - h, y));
+    windowEl.style.left = `${clampedX}px`;
+    windowEl.style.top = `${clampedY}px`;
+    windowEl.style.right = 'auto';
+    windowEl.style.bottom = 'auto';
+  }
+
+  separateFromOther() {
+    const el = document.getElementById('minimap-float');
+    const other = document.getElementById('leaderboard-float');
+    if (!el || !other) return;
+    const r1 = el.getBoundingClientRect();
+    const r2 = other.getBoundingClientRect();
+    const overlap = !(r1.right <= r2.left || r1.left >= r2.right || r1.bottom <= r2.top || r1.top >= r2.bottom);
+    if (!overlap) return;
+
+    const dx = Math.min(r1.right - r2.left, r2.right - r1.left);
+    const dy = Math.min(r1.bottom - r2.top, r2.bottom - r1.top);
+    let newX = r1.left;
+    let newY = r1.top;
+    const gap = 8;
+    if (dx < dy) {
+      newX += r1.left < r2.left ? -(dx + gap) : (dx + gap);
+    } else {
+      newY += r1.top < r2.top ? -(dy + gap) : (dy + gap);
+    }
+    this.setPosition(el, newX, newY);
+  }
+
   setupEventListeners() {
     // Make floating window draggable
     const windowEl = document.getElementById('minimap-float');
     const header = windowEl.querySelector('h3');
+    const resizeHandle = windowEl.querySelector('.resize-handle');
     
-    header.addEventListener('mousedown', (e) => {
+    const startDrag = (e) => {
+      if (this.windowResizing) return;
       this.windowDragging = true;
       const rect = windowEl.getBoundingClientRect();
       this.windowDragOffset = {
@@ -27,14 +63,49 @@ export class Minimap {
         y: e.clientY - rect.top,
       };
       windowEl.style.cursor = 'grabbing';
+    };
+
+    // Drag from header or body (excluding resize handle)
+    header.addEventListener('mousedown', startDrag);
+    windowEl.addEventListener('mousedown', (e) => {
+      if (e.target === resizeHandle) return;
+      startDrag(e);
     });
 
     window.addEventListener('mousemove', (e) => {
+      const windowEl = document.getElementById('minimap-float');
+      if (!windowEl) return;
+      
       if (this.windowDragging) {
-        windowEl.style.left = `${e.clientX - this.windowDragOffset.x}px`;
-        windowEl.style.top = `${e.clientY - this.windowDragOffset.y}px`;
-        windowEl.style.right = 'auto';
-        windowEl.style.bottom = 'auto';
+        const x = e.clientX - this.windowDragOffset.x;
+        const y = e.clientY - this.windowDragOffset.y;
+        this.setPosition(windowEl, x, y);
+        this.separateFromOther();
+      }
+      
+      if (this.windowResizing) {
+        const rect = windowEl.getBoundingClientRect();
+        const newWidth = Math.max(100, e.clientX - rect.left);
+        const newHeight = Math.max(100, e.clientY - rect.top);
+        
+        // Enforce viewport boundaries for resize
+        const maxW = window.innerWidth - rect.left;
+        const maxH = window.innerHeight - rect.top;
+        
+        const finalW = Math.min(newWidth, maxW);
+        const finalH = Math.min(newHeight, maxH);
+        
+        windowEl.style.width = `${finalW}px`;
+        windowEl.style.height = `${finalH}px`;
+        
+        // Update canvas size (accounting for 24px padding = 12px * 2)
+        this.canvas.width = Math.max(50, finalW - 24);
+        this.canvas.height = Math.max(50, finalH - 50);
+        
+        // Clamp position after resize to stay on screen
+        const r = windowEl.getBoundingClientRect();
+        this.setPosition(windowEl, r.left, r.top);
+        this.separateFromOther();
       }
     });
 
@@ -43,7 +114,21 @@ export class Minimap {
         this.windowDragging = false;
         windowEl.style.cursor = 'move';
       }
+      if (this.windowResizing) {
+        this.windowResizing = false;
+        windowEl.style.cursor = 'move';
+      }
     });
+
+    // Resize handle
+    if (resizeHandle) {
+      resizeHandle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.windowResizing = true;
+        windowEl.style.cursor = 'se-resize';
+      });
+    }
 
     // Toggle collapse on double-click
     header.addEventListener('dblclick', () => {
@@ -67,7 +152,7 @@ export class Minimap {
 
     this.canvas.addEventListener('mouseup', () => {
       this.dragging = false;
-      this.resolveOverlap();
+      this.separateFromOther();
     });
 
     this.canvas.addEventListener('wheel', (e) => {
@@ -85,14 +170,24 @@ export class Minimap {
     const el = document.getElementById('minimap-float');
     const other = document.getElementById('leaderboard-float');
     if (!el || !other) return;
+    
     const r1 = el.getBoundingClientRect();
     const r2 = other.getBoundingClientRect();
-    const overlap = !(r1.right < r2.left || r1.left > r2.right || r1.bottom < r2.top || r1.top > r2.bottom);
+    
+    const overlap = !(r1.right + 5 < r2.left || r1.left > r2.right + 5 ||
+                     r1.bottom + 5 < r2.top || r1.top > r2.bottom + 5);
+
     if (overlap) {
-      // push leaderboard below minimap
-      other.style.top = `${r1.bottom + 16}px`;
-      other.style.right = '16px';
-      other.style.left = 'auto';
+      // Push leaderboard below minimap with gap, clamped to viewport
+      let newTop = r1.bottom + 16;
+      let newLeft = r1.left;
+      const maxTop = window.innerHeight - r2.height;
+      const maxLeft = window.innerWidth - r2.width;
+      newTop = Math.min(Math.max(0, newTop), Math.max(0, maxTop));
+      newLeft = Math.min(Math.max(0, newLeft), Math.max(0, maxLeft));
+      other.style.top = `${newTop}px`;
+      other.style.left = `${newLeft}px`;
+      other.style.right = 'auto';
     }
   }
 

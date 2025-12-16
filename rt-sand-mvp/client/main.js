@@ -10,6 +10,21 @@ import { Leaderboard } from './leaderboard.js';
 class InfiniteGoApp {
   constructor() {
     this.state = new GameState();
+    
+    // Get room info from URL or session storage
+    const urlParams = new URLSearchParams(window.location.search);
+    this.roomId = urlParams.get('room') || sessionStorage.getItem('roomId') || 'default';
+    this.playerColor = Number(sessionStorage.getItem('playerColor') || '0');
+    
+    // If no room in URL, redirect to lobby
+    if (!urlParams.get('room') && !sessionStorage.getItem('roomId')) {
+      window.location.href = 'lobby.html';
+      return;
+    }
+    
+    // Set selected color in state
+    this.state.selectedColor = this.playerColor;
+    
     this.initializeUI();
     this.setupComponents();
     this.setupControls();
@@ -37,11 +52,11 @@ class InfiniteGoApp {
     this.renderer = new Renderer(mainCanvas, this.state);
     this.renderer.start();
 
-    // Network manager
+    // Network manager - connect with room and color
     this.network = new NetworkManager(this.state, (event, data) => {
       this.handleNetworkEvent(event, data);
     });
-    this.network.connect();
+    this.network.connect(this.roomId, this.playerColor);
 
     // Input manager
     this.input = new InputManager(mainCanvas, this.state, this.renderer, (action, data) => {
@@ -59,6 +74,19 @@ class InfiniteGoApp {
   }
 
   setupControls() {
+    // Display room info
+    document.getElementById('current-room').textContent = this.roomId;
+    this.updatePlayerColorDisplay();
+    
+    // Leave room button
+    document.getElementById('leave-room-btn').addEventListener('click', () => {
+      if (confirm('Leave this room and return to lobby?')) {
+        sessionStorage.removeItem('roomId');
+        sessionStorage.removeItem('playerColor');
+        window.location.href = 'lobby.html';
+      }
+    });
+    
     // Menu toggle
     const menuToggle = document.getElementById('menu-toggle');
     const menuClose = document.getElementById('menu-close');
@@ -78,12 +106,17 @@ class InfiniteGoApp {
       menuToggle.classList.add('visible');
     });
 
-    // Color buttons
-    document.querySelectorAll('.color-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.state.selectedColor = Number(btn.dataset.color);
-        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    // Color buttons - set active state based on player color
+    const colorButtons = document.querySelectorAll('.color-btn');
+    colorButtons.forEach(btn => {
+      btn.classList.remove('active');
+      if (Number(btn.dataset.color) === this.playerColor) {
         btn.classList.add('active');
+      }
+      
+      // Disable color changing (player is locked to their chosen color)
+      btn.addEventListener('click', () => {
+        alert('You can only use your selected color. To change color, return to lobby and join a new room.');
       });
     });
 
@@ -108,6 +141,22 @@ class InfiniteGoApp {
       this.state.resetView();
       this.state.saveViewState();
     });
+  }
+
+  updatePlayerColorDisplay() {
+    const colorNames = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Cyan', 'Pink'];
+    const colorDisplay = document.getElementById('player-color-display');
+    if (colorDisplay) {
+      colorDisplay.textContent = colorNames[this.playerColor] || `Color ${this.playerColor}`;
+      colorDisplay.style.fontWeight = 'bold';
+      
+      // Set color preview
+      const colors = ['#000', '#fff', '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#e67e22', '#1abc9c', '#e91e63'];
+      colorDisplay.style.color = colors[this.playerColor] || '#000';
+      if (this.playerColor === 1) {
+        colorDisplay.style.textShadow = '0 0 2px #000';
+      }
+    }
   }
 
   handleNetworkEvent(event, data) {

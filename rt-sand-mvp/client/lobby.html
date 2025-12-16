@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>InfiniteGo - 房间大厅</title>
+    <link rel="stylesheet" href="lobby.css" />
+  </head>
+  <body>
+    <div id="lobby-app">
+      <header class="lobby-header">
+        <h1>InfiniteGo</h1>
+        <p class="subtitle">无限围棋 - 多人在线对弈</p>
+      </header>
+
+      <main class="lobby-main">
+        <!-- Create Room Section -->
+        <section class="create-room-section">
+          <h2>创建新房间</h2>
+          <div class="create-form">
+            <div class="form-group">
+              <label for="room-id">房间名称:</label>
+              <input 
+                type="text" 
+                id="room-id" 
+                placeholder="输入房间名称（留空则自动生成）" 
+                maxlength="50"
+              />
+            </div>
+            <div class="form-group">
+              <label for="color-select">选择你的颜色:</label>
+              <div class="color-picker" id="color-picker">
+                <button class="color-option active" data-color="0" title="黑色">
+                  <span class="color-dot" style="background: #000;"></span>
+                </button>
+                <button class="color-option" data-color="1" title="白色">
+                  <span class="color-dot" style="background: #fff; border: 1px solid #ccc;"></span>
+                </button>
+                <button class="color-option" data-color="2" title="红色">
+                  <span class="color-dot" style="background: #e74c3c;"></span>
+                </button>
+                <button class="color-option" data-color="3" title="蓝色">
+                  <span class="color-dot" style="background: #3498db;"></span>
+                </button>
+                <button class="color-option" data-color="4" title="绿色">
+                  <span class="color-dot" style="background: #2ecc71;"></span>
+                </button>
+                <button class="color-option" data-color="5" title="黄色">
+                  <span class="color-dot" style="background: #f39c12;"></span>
+                </button>
+                <button class="color-option" data-color="6" title="紫色">
+                  <span class="color-dot" style="background: #9b59b6;"></span>
+                </button>
+                <button class="color-option" data-color="7" title="橙色">
+                  <span class="color-dot" style="background: #e67e22;"></span>
+                </button>
+                <button class="color-option" data-color="8" title="青色">
+                  <span class="color-dot" style="background: #1abc9c;"></span>
+                </button>
+                <button class="color-option" data-color="9" title="粉色">
+                  <span class="color-dot" style="background: #e91e63;"></span>
+                </button>
+              </div>
+            </div>
+            <button id="create-btn" class="btn btn-primary">创建并加入房间</button>
+          </div>
+        </section>
+
+        <div class="divider">或</div>
+
+        <!-- Join Room Section -->
+        <section class="join-room-section">
+          <h2>加入现有房间</h2>
+          <div class="room-list-controls">
+            <button id="refresh-btn" class="btn btn-secondary">刷新房间列表</button>
+            <div class="room-count">
+              <span id="room-count">0</span> 个房间
+            </div>
+          </div>
+          <div id="room-list" class="room-list">
+            <p class="loading-text">加载房间列表...</p>
+          </div>
+        </section>
+
+        <!-- Quick Join Section -->
+        <section class="quick-join-section">
+          <h2>快速加入</h2>
+          <div class="quick-join-form">
+            <input 
+              type="text" 
+              id="join-room-id" 
+              placeholder="输入房间名称直接加入"
+            />
+            <button id="quick-join-btn" class="btn btn-primary">加入房间</button>
+          </div>
+        </section>
+      </main>
+
+      <footer class="lobby-footer">
+        <p>提示：局域网和公网均可访问。分享房间名称给好友即可一起游戏！</p>
+      </footer>
+    </div>
+
+    <script type="module" src="lobby.js"></script>
+  </body>
+</html>

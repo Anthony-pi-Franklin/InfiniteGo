@@ -17,6 +17,15 @@
         </div>
         
         <div class="section">
+          <h4>Room Info</h4>
+          <div id="room-info" class="info-box">
+            <div><strong>Room:</strong> <span id="current-room">-</span></div>
+            <div><strong>Your Color:</strong> <span id="player-color-display">-</span></div>
+          </div>
+          <button id="leave-room-btn" class="btn-secondary">Return to Lobby</button>
+        </div>
+        
+        <div class="section">
           <h4>Color</h4>
           <div class="button-group">
             <button class="color-btn active" data-color="0">●</button>
@@ -30,6 +39,7 @@
             <button class="color-btn" data-color="8">●</button>
             <button class="color-btn" data-color="9">●</button>
           </div>
+          <p class="note">Note: You can only place stones in your selected color</p>
         </div>
 
         <div class="section">
@@ -62,11 +72,13 @@
       <div id="minimap-float">
         <h3>Minimap ▲</h3>
         <canvas id="minimap"></canvas>
+        <div class="resize-handle"></div>
       </div>
 
       <div id="leaderboard-float">
         <h3>Leaderboard ▲</h3>
         <div class="leaderboard-content"></div>
+        <div class="resize-handle"></div>
       </div>
     </div>
     

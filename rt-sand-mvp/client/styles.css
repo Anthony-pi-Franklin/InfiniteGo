@@ -146,6 +146,50 @@ canvas {
   border-bottom: none;
 }
 
+/* Room Info Styles */
+.info-box {
+  background: var(--panel-2);
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.info-box div {
+  margin-bottom: 6px;
+}
+
+.info-box div:last-child {
+  margin-bottom: 0;
+}
+
+.btn-secondary {
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  margin-bottom: 12px;
+}
+
+.btn-secondary:hover {
+  background: var(--border);
+  border-color: var(--muted);
+}
+
+.note {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
+  font-style: italic;
+}
+
+
 #minimap {
   display: block;
   width: 100%;
@@ -161,6 +205,7 @@ canvas {
   top: 16px;
   right: 16px;
   width: 220px;
+  height: 260px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -170,6 +215,10 @@ canvas {
   z-index: 18;
   cursor: move;
   user-select: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
 }
 
 #minimap-float h3 {
@@ -185,8 +234,7 @@ canvas {
 }
 
 #minimap-float canvas {
-  width: 100%;
-  height: 200px;
+  flex: 1;
   background: var(--panel-2);
   border: 2px solid var(--border);
   border-radius: 4px;
@@ -197,7 +245,7 @@ canvas {
   position: absolute;
   bottom: 12px;
   right: 12px;
-  color: var(--muted);
+    background: linear-gradient(135deg, transparent 50%, var(--accent) 50%);
   font-size: 14px;
   pointer-events: none;
 }
@@ -215,6 +263,7 @@ canvas {
   top: 260px;
   right: 16px;
   width: 220px;
+  height: 300px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -224,6 +273,9 @@ canvas {
   z-index: 19;
   cursor: move;
   user-select: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 #leaderboard-float h3 {
@@ -238,9 +290,28 @@ canvas {
   cursor: grabbing;
 }
 
+.resize-handle {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  cursor: se-resize;
+  background: linear-gradient(135deg, transparent 50%, var(--accent) 50%);
+  border-radius: 0 0 10px 0;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+.resize-handle:hover {
+  opacity: 0.8;
+}
+
 .leaderboard-content {
   font-size: 12px;
   color: #e5e7eb;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .leaderboard-entry {

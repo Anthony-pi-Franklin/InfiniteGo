@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -16,8 +17,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	room := server.NewRoom()
-	go room.Run(ctx)
+	// Create room manager to handle multiple rooms
+	roomManager := server.NewRoomManager(ctx)
 
 	mux := http.NewServeMux()
 
@@ -27,8 +28,19 @@ func main() {
 	}
 	fs := http.FileServer(http.Dir(staticDir))
 	mux.Handle("/", fs)
+	
+	// WebSocket handler with room support
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		server.ServeWS(room, w, r)
+		server.ServeWS(roomManager, w, r)
+	})
+	
+	// API endpoint to list rooms
+	mux.HandleFunc("/api/rooms", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		rooms := roomManager.GetRoomInfoList()
+		if err := json.NewEncoder(w).Encode(rooms); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 
 	addr := ":8080"
