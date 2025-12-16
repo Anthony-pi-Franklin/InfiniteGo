@@ -40,6 +40,7 @@ export class Leaderboard {
       if (this.dragging) {
         this.dragging = false;
         this.element.style.cursor = 'move';
+        this.resolveOverlap();
       }
     });
 
@@ -49,6 +50,33 @@ export class Leaderboard {
         this.collapsed = !this.collapsed;
         this.update();
       });
+    }
+  }
+
+  resolveOverlap() {
+    const el = this.element;
+    const other = document.getElementById('minimap-float');
+    const sidebar = document.getElementById('sidebar');
+    if (!el) return;
+    const r1 = el.getBoundingClientRect();
+    if (other) {
+      const r2 = other.getBoundingClientRect();
+      const overlap = !(r1.right < r2.left || r1.left > r2.right || r1.bottom < r2.top || r1.top > r2.bottom);
+      if (overlap) {
+        el.style.top = `${r2.bottom + 16}px`;
+        el.style.right = '16px';
+        el.style.left = 'auto';
+      }
+    }
+    if (sidebar) {
+      const rs = sidebar.getBoundingClientRect();
+      const overlapS = !(r1.right < rs.left || r1.left > rs.right || r1.bottom < rs.top || r1.top > rs.bottom);
+      if (overlapS) {
+        // move leaderboard to the right side avoiding sidebar
+        el.style.right = '16px';
+        el.style.left = 'auto';
+        el.style.top = `${rs.bottom + 16}px`;
+      }
     }
   }
 

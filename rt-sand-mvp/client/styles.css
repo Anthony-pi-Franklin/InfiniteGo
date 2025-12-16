@@ -158,8 +158,8 @@ canvas {
 
 #minimap-float {
   position: absolute;
-  bottom: 16px;
-  left: 16px;
+  top: 16px;
+  right: 16px;
   width: 220px;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -212,7 +212,7 @@ canvas {
 
 #leaderboard-float {
   position: absolute;
-  top: 16px;
+  top: 260px;
   right: 16px;
   width: 220px;
   background: var(--panel);

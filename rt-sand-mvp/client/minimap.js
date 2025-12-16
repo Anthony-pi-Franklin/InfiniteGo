@@ -67,6 +67,7 @@ export class Minimap {
 
     this.canvas.addEventListener('mouseup', () => {
       this.dragging = false;
+      this.resolveOverlap();
     });
 
     this.canvas.addEventListener('wheel', (e) => {
@@ -80,6 +81,21 @@ export class Minimap {
     });
   }
 
+  resolveOverlap() {
+    const el = document.getElementById('minimap-float');
+    const other = document.getElementById('leaderboard-float');
+    if (!el || !other) return;
+    const r1 = el.getBoundingClientRect();
+    const r2 = other.getBoundingClientRect();
+    const overlap = !(r1.right < r2.left || r1.left > r2.right || r1.bottom < r2.top || r1.top > r2.bottom);
+    if (overlap) {
+      // push leaderboard below minimap
+      other.style.top = `${r1.bottom + 16}px`;
+      other.style.right = '16px';
+      other.style.left = 'auto';
+    }
+  }
+
   handleDrag(e) {
     const rect = this.canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
@@ -91,9 +107,8 @@ export class Minimap {
     const worldX = (mx - centerX) / this.state.minimapScale;
     const worldY = -(my - centerY) / this.state.minimapScale;
 
-    const mainCanvas = document.getElementById('canvas');
-    this.state.pan.x = mainCanvas.width / 2 - worldX * this.state.scale;
-    this.state.pan.y = mainCanvas.height / 2 - worldY * this.state.scale;
+    this.state.pan.x = -worldX * this.state.scale;
+    this.state.pan.y = -worldY * this.state.scale;
     this.state.saveViewState();
   }
 
