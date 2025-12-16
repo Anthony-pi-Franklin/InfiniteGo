@@ -105,7 +105,7 @@ export class Minimap {
     const centerY = this.canvas.height / 2;
 
     const worldX = (mx - centerX) / this.state.minimapScale;
-    const worldY = -(my - centerY) / this.state.minimapScale;
+    const worldY = (my - centerY) / this.state.minimapScale;
 
     this.state.pan.x = -worldX * this.state.scale;
     this.state.pan.y = -worldY * this.state.scale;
@@ -141,14 +141,14 @@ export class Minimap {
     // Main canvas viewport in world coordinates (centered at 0,0)
     const vpLeft = (-mainW / 2 - mainPan.x) / mainScale;
     const vpRight = (mainW / 2 - mainPan.x) / mainScale;
-    const vpTop = (mainH / 2 - mainPan.y) / mainScale;
-    const vpBottom = (-mainH / 2 - mainPan.y) / mainScale;
+    const vpTop = (-mainH / 2 - mainPan.y) / mainScale;
+    const vpBottom = (mainH / 2 - mainPan.y) / mainScale;
 
     // Convert to minimap screen coordinates
     const vpScreenLeft = centerX + vpLeft * scale;
     const vpScreenRight = centerX + vpRight * scale;
-    const vpScreenTop = centerY - vpTop * scale;
-    const vpScreenBottom = centerY - vpBottom * scale;
+    const vpScreenTop = centerY + vpTop * scale;
+    const vpScreenBottom = centerY + vpBottom * scale;
 
     // Clamp to minimap bounds
     const clampedLeft = Math.max(0, Math.min(width, vpScreenLeft));
