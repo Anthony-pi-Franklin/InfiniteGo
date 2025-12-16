@@ -73,7 +73,7 @@ canvas {
   position: absolute;
   top: 16px;
   left: 16px;
-  width: 260px;
+  width: 280px;
   max-height: calc(100vh - 32px);
   background: var(--panel);
   color: var(--text);
@@ -82,8 +82,25 @@ canvas {
   border-radius: 10px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.35);
   overflow-y: auto;
+  overflow-x: hidden;
   z-index: 20;
   transition: transform 0.2s ease;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+#sidebar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 25;
 }
 
 #sidebar.hidden {
@@ -162,6 +179,13 @@ canvas {
 
 .info-box div:last-child {
   margin-bottom: 0;
+}
+
+#player-color-display {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: bold;
 }
 
 .btn-secondary {
@@ -504,4 +528,6 @@ select:focus {
 #minimap-placeholder.active,
 #leaderboard-placeholder.active {
   display: block;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
 }

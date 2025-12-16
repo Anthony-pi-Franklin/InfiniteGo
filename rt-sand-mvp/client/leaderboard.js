@@ -172,6 +172,10 @@ export class Leaderboard {
     // Disable dragging and resizing when embedded
     windowEl.style.cursor = 'default';
     
+    // Hide resize handle when embedded
+    const resizeHandle = windowEl.querySelector('.resize-handle');
+    if (resizeHandle) resizeHandle.style.display = 'none';
+    
     // Move to sidebar (append to sidebar)
     const placeholder = document.getElementById('leaderboard-placeholder');
     if (placeholder) {
@@ -201,6 +205,11 @@ export class Leaderboard {
     
     // Move back to main app
     appEl.appendChild(windowEl);
+    
+    // Show resize handle when separated
+    const resizeHandle = windowEl.querySelector('.resize-handle');
+    if (resizeHandle) resizeHandle.style.display = 'block';
+    
     const placeholder = document.getElementById('leaderboard-placeholder');
     if (placeholder) {
       placeholder.classList.remove('active');
@@ -217,8 +226,8 @@ export class Leaderboard {
   }
 
   autoAdjustHeight() {
-    if (this.userResized || this.embedded) return;
-    // Let the container size to content up to 10 items (we already cap rendering at 10)
+    if (this.userResized && !this.embedded) return;
+    // When embedded or not user-resized, auto-size to content (max 10 items)
     this.element.style.height = 'auto';
   }
 

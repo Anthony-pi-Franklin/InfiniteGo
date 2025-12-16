@@ -106,6 +106,33 @@ class InfiniteGoApp {
       menuToggle.classList.add('visible');
     });
 
+    // Sidebar resize
+    const sidebarResizeHandle = document.querySelector('.sidebar-resize-handle');
+    let isResizingSidebar = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    if (sidebarResizeHandle) {
+      sidebarResizeHandle.addEventListener('mousedown', (e) => {
+        isResizingSidebar = true;
+        startX = e.clientX;
+        startWidth = sidebar.offsetWidth;
+        e.preventDefault();
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (isResizingSidebar) {
+          const newWidth = startWidth + (e.clientX - startX);
+          const clampedWidth = Math.max(200, Math.min(500, newWidth));
+          sidebar.style.width = `${clampedWidth}px`;
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        isResizingSidebar = false;
+      });
+    }
+
     // Color buttons - removed (players locked to their chosen color)
 
     // Mode buttons
@@ -136,13 +163,18 @@ class InfiniteGoApp {
     const colorDisplay = document.getElementById('player-color-display');
     if (colorDisplay) {
       colorDisplay.textContent = colorNames[this.playerColor] || `Color ${this.playerColor}`;
-      colorDisplay.style.fontWeight = 'bold';
       
-      // Set color preview
-      const colors = ['#000', '#fff', '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#e67e22', '#1abc9c', '#e91e63'];
-      colorDisplay.style.color = colors[this.playerColor] || '#000';
+      // Set background and text color for contrast
+      const bgColors = ['#000', '#fff', '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#e67e22', '#1abc9c', '#e91e63'];
+      const textColors = ['#fff', '#000', '#fff', '#fff', '#fff', '#000', '#fff', '#fff', '#000', '#fff'];
+      
+      colorDisplay.style.backgroundColor = bgColors[this.playerColor] || '#888';
+      colorDisplay.style.color = textColors[this.playerColor] || '#fff';
+      
       if (this.playerColor === 1) {
-        colorDisplay.style.textShadow = '0 0 2px #000';
+        colorDisplay.style.border = '1px solid #666';
+      } else {
+        colorDisplay.style.border = 'none';
       }
     }
   }

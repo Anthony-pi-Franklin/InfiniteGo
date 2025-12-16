@@ -220,6 +220,10 @@ export class Minimap {
     // Disable dragging and resizing when embedded
     windowEl.style.cursor = 'default';
     
+    // Hide resize handle when embedded
+    const resizeHandle = windowEl.querySelector('.resize-handle');
+    if (resizeHandle) resizeHandle.style.display = 'none';
+    
     // Move to sidebar (append to sidebar)
     const placeholder = document.getElementById('minimap-placeholder');
     if (placeholder) {
@@ -254,6 +258,11 @@ export class Minimap {
     
     // Move back to main app
     appEl.appendChild(windowEl);
+    
+    // Show resize handle when separated
+    const resizeHandle = windowEl.querySelector('.resize-handle');
+    if (resizeHandle) resizeHandle.style.display = 'block';
+    
     const placeholder = document.getElementById('minimap-placeholder');
     if (placeholder) {
       placeholder.classList.remove('active');
