@@ -11,6 +11,7 @@ export class Minimap {
     this.windowResizing = false;
     this.windowDragOffset = { x: 0, y: 0 };
     this.collapsed = false;
+    this.embedded = false; // Track if embedded in sidebar
     
     this.setupEventListeners();
   }
@@ -55,7 +56,7 @@ export class Minimap {
     const resizeHandle = windowEl.querySelector('.resize-handle');
     
     const startDrag = (e) => {
-      if (this.windowResizing) return;
+      if (this.windowResizing || this.embedded) return;
       this.windowDragging = true;
       const rect = windowEl.getBoundingClientRect();
       this.windowDragOffset = {
@@ -130,22 +131,31 @@ export class Minimap {
       });
     }
 
-    // Toggle collapse on double-click
-    header.addEventListener('dblclick', () => {
-      this.collapsed = !this.collapsed;
-      const canvas = windowEl.querySelector('canvas');
-      canvas.style.display = this.collapsed ? 'none' : 'block';
-      header.textContent = `Minimap ${this.collapsed ? '▼' : '▲'}`;
+    // Toggle embed/separate on double-click (header or container)
+    const toggleEmbed = () => {
+      if (this.embedded) {
+        this.separateFromSidebar();
+      } else {
+        this.embedInSidebar();
+      }
+    };
+    header.addEventListener('dblclick', toggleEmbed);
+    windowEl.addEventListener('dblclick', (e) => {
+      // ignore dblclicks on resize handle
+      const resizeHandle = windowEl.querySelector('.resize-handle');
+      if (e.target === resizeHandle) return;
+      toggleEmbed();
     });
 
     // Canvas interactions for navigation
     this.canvas.addEventListener('mousedown', (e) => {
+      if (this.embedded) return;
       this.dragging = true;
       this.handleDrag(e);
     });
 
     this.canvas.addEventListener('mousemove', (e) => {
-      if (this.dragging) {
+      if (this.dragging && !this.embedded) {
         this.handleDrag(e);
       }
     });
@@ -156,6 +166,7 @@ export class Minimap {
     });
 
     this.canvas.addEventListener('wheel', (e) => {
+      if (this.embedded) return;
       e.preventDefault();
       const factor = e.deltaY < 0 ? CONFIG.ZOOM_FACTOR : 1 / CONFIG.ZOOM_FACTOR;
       const newScale = Math.max(
@@ -189,6 +200,80 @@ export class Minimap {
       other.style.left = `${newLeft}px`;
       other.style.right = 'auto';
     }
+  }
+
+  embedInSidebar() {
+    const windowEl = document.getElementById('minimap-float');
+    const sidebar = document.getElementById('sidebar');
+    
+    if (!windowEl || !sidebar) return;
+    
+    // Change display to embedded style
+    windowEl.classList.add('embedded');
+    windowEl.style.position = 'static';
+    windowEl.style.width = '100%';
+    windowEl.style.left = 'auto';
+    windowEl.style.top = 'auto';
+    windowEl.style.right = 'auto';
+    windowEl.style.bottom = 'auto';
+    
+    // Disable dragging and resizing when embedded
+    windowEl.style.cursor = 'default';
+    
+    // Move to sidebar (append to sidebar)
+    const placeholder = document.getElementById('minimap-placeholder');
+    if (placeholder) {
+      placeholder.classList.add('active');
+      placeholder.appendChild(windowEl);
+    }
+    
+    this.embedded = true;
+    
+    // Update canvas size for embedded mode
+    setTimeout(() => {
+      this.canvas.width = windowEl.offsetWidth - 24;
+      this.canvas.height = 150;
+    }, 0);
+  }
+
+  separateFromSidebar() {
+    const windowEl = document.getElementById('minimap-float');
+    const appEl = document.getElementById('app');
+    
+    if (!windowEl || !appEl) return;
+    
+    // Change back to floating style
+    windowEl.classList.remove('embedded');
+    windowEl.style.position = 'absolute';
+    windowEl.style.width = '220px';
+    windowEl.style.height = '260px';
+    windowEl.style.top = '16px';
+    windowEl.style.right = '16px';
+    windowEl.style.left = 'auto';
+    windowEl.style.bottom = 'auto';
+    
+    // Move back to main app
+    appEl.appendChild(windowEl);
+    const placeholder = document.getElementById('minimap-placeholder');
+    if (placeholder) {
+      placeholder.classList.remove('active');
+    }
+    
+    this.embedded = false;
+    
+    // Update canvas size
+    setTimeout(() => {
+      this.canvas.width = 200;
+      this.canvas.height = 240;
+    }, 0);
+    
+    // Update header
+    const header = windowEl.querySelector('h3');
+    if (header) {
+      header.textContent = 'Minimap ▲';
+    }
+    
+    this.separateFromOther();
   }
 
   handleDrag(e) {

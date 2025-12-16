@@ -106,19 +106,7 @@ class InfiniteGoApp {
       menuToggle.classList.add('visible');
     });
 
-    // Color buttons - set active state based on player color
-    const colorButtons = document.querySelectorAll('.color-btn');
-    colorButtons.forEach(btn => {
-      btn.classList.remove('active');
-      if (Number(btn.dataset.color) === this.playerColor) {
-        btn.classList.add('active');
-      }
-      
-      // Disable color changing (player is locked to their chosen color)
-      btn.addEventListener('click', () => {
-        alert('You can only use your selected color. To change color, return to lobby and join a new room.');
-      });
-    });
+    // Color buttons - removed (players locked to their chosen color)
 
     // Mode buttons
     document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -172,8 +160,7 @@ class InfiniteGoApp {
         break;
       
       case 'restart':
-        this.updateStatus('Board cleared');
-        this.updateSeq();
+        this.updateStatus('Cleared your stones');
         this.leaderboard.update();
         break;
     }

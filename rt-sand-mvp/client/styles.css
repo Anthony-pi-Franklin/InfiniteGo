@@ -218,7 +218,6 @@ canvas {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  position: relative;
 }
 
 #minimap-float h3 {
@@ -243,10 +242,17 @@ canvas {
 
 #seq {
   position: absolute;
-  bottom: 12px;
-  right: 12px;
-    background: linear-gradient(135deg, transparent 50%, var(--accent) 50%);
-  font-size: 14px;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: bold;
+  font-size: 16px;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
   pointer-events: none;
 }
 
@@ -456,4 +462,46 @@ select:focus {
 
 #canvas {
   cursor: crosshair;
+}
+/* Embedded styles for minimap and leaderboard in sidebar */
+#minimap-float.embedded,
+#leaderboard-float.embedded {
+  position: static !important;
+  width: 100% !important;
+  height: auto !important;
+  margin-bottom: 16px;
+  border-radius: 6px;
+  padding: 12px;
+  left: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+}
+
+#minimap-float.embedded h3,
+#leaderboard-float.embedded h3 {
+  cursor: grab;
+  margin: 0 0 8px 0;
+}
+
+#minimap-float.embedded canvas {
+  width: 100%;
+  height: auto !important;
+  border-radius: 4px;
+}
+
+#leaderboard-float.embedded .leaderboard-content {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Placeholder sections in sidebar */
+#minimap-placeholder,
+#leaderboard-placeholder {
+  display: none;
+}
+
+#minimap-placeholder.active,
+#leaderboard-placeholder.active {
+  display: block;
 }

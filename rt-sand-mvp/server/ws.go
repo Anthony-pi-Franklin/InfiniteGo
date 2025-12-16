@@ -99,10 +99,14 @@ func (c *Client) readPump(ctx context.Context, cancel context.CancelFunc) {
 			continue
 		}
 
-		// Handle board reset request
+		// Handle board reset request (clear only player's color)
 		if payload.Type == "restart" {
+			if c.selectedColor == nil {
+				c.sendError("color_not_selected")
+				continue
+			}
 			select {
-			case c.room.ResetInbox <- ResetRequest{Player: c}:
+			case c.room.ResetInbox <- ResetRequest{Player: c, Color: *c.selectedColor}:
 			case <-ctx.Done():
 				return
 			}

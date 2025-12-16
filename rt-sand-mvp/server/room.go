@@ -20,6 +20,7 @@ type GetStateRequest struct {
 
 type ResetRequest struct {
 	Player *Client
+	Color  Color
 }
 
 type MoveResult struct {
@@ -83,7 +84,8 @@ func (r *Room) Run(ctx context.Context) {
 				req.Player.sendEnvelope(Envelope{Type: "board_state", BoardState: &state})
 			}
 		case req := <-r.ResetInbox:
-			delta := r.ResetBoard()
+			// Clear only the requesting player's color
+			delta := r.ResetBoardColor(req.Color)
 			r.broadcast(delta)
 			if req.Player != nil {
 				state := r.GetBoardState()
@@ -144,7 +146,25 @@ func (r *Room) ResetBoard() DeltaUpdate {
 	// Capture current stones before clearing
 	removed := r.getAllCells()
 	r.Chunks = make(map[ChunkID]*Chunk)
-	r.Seq++
+	return DeltaUpdate{
+		Removed:   removed,
+		Added:     nil,
+		ServerSeq: r.Seq,
+	}
+}
+
+// Reset only stones of a given color (per-player restart)
+func (r *Room) ResetBoardColor(color Color) DeltaUpdate {
+	var removed []Cell
+	// Iterate all cells and remove those matching color
+	for _, c := range r.getAllCells() {
+		if c.Color == color {
+			// remove from board
+			r.removeCell(c.X, c.Y)
+			removed = append(removed, c)
+		}
+	}
+	// Do NOT increment sequence for personal reset per requirements
 	return DeltaUpdate{
 		Removed:   removed,
 		Added:     nil,

@@ -10,6 +10,8 @@ export class Leaderboard {
     this.dragging = false;
     this.resizing = false;
     this.dragOffset = { x: 0, y: 0 };
+    this.embedded = false; // Track if embedded in sidebar
+    this.userResized = false; // Track if user manually resized
     
     this.setupEventListeners();
   }
@@ -52,7 +54,7 @@ export class Leaderboard {
     const resizeHandle = this.element.querySelector('.resize-handle');
     
     const startDrag = (e) => {
-      if (this.resizing) return;
+      if (this.resizing || this.embedded) return;
       this.dragging = true;
       const rect = this.element.getBoundingClientRect();
       this.dragOffset = {
@@ -113,20 +115,29 @@ export class Leaderboard {
     // Resize handle
     if (resizeHandle) {
       resizeHandle.addEventListener('mousedown', (e) => {
+        if (this.embedded) return;
         e.preventDefault();
         e.stopPropagation();
         this.resizing = true;
+        this.userResized = true;
         this.element.style.cursor = 'se-resize';
       });
     }
 
-    // Toggle collapse on double-click
-    if (header) {
-      header.addEventListener('dblclick', () => {
-        this.collapsed = !this.collapsed;
-        this.update();
-      });
-    }
+    // Toggle embed/separate on double-click (header or container)
+    const toggleEmbed = () => {
+      if (this.embedded) {
+        this.separateFromSidebar();
+      } else {
+        this.embedInSidebar();
+      }
+    };
+    if (header) header.addEventListener('dblclick', toggleEmbed);
+    this.element.addEventListener('dblclick', (e) => {
+      const resizeHandle = this.element.querySelector('.resize-handle');
+      if (e.target === resizeHandle) return;
+      toggleEmbed();
+    });
   }
 
   // Overlap with sidebar: still keep simple push right on drop
@@ -143,9 +154,78 @@ export class Leaderboard {
     }
   }
 
+  embedInSidebar() {
+    const windowEl = this.element;
+    const sidebar = document.getElementById('sidebar');
+    
+    if (!windowEl || !sidebar) return;
+    
+    // Change display to embedded style
+    windowEl.classList.add('embedded');
+    windowEl.style.position = 'static';
+    windowEl.style.width = '100%';
+    windowEl.style.left = 'auto';
+    windowEl.style.top = 'auto';
+    windowEl.style.right = 'auto';
+    windowEl.style.bottom = 'auto';
+    
+    // Disable dragging and resizing when embedded
+    windowEl.style.cursor = 'default';
+    
+    // Move to sidebar (append to sidebar)
+    const placeholder = document.getElementById('leaderboard-placeholder');
+    if (placeholder) {
+      placeholder.classList.add('active');
+      placeholder.appendChild(windowEl);
+    }
+    
+    this.embedded = true;
+    this.userResized = false;
+  }
+
+  separateFromSidebar() {
+    const windowEl = this.element;
+    const appEl = document.getElementById('app');
+    
+    if (!windowEl || !appEl) return;
+    
+    // Change back to floating style
+    windowEl.classList.remove('embedded');
+    windowEl.style.position = 'absolute';
+    windowEl.style.width = '220px';
+    windowEl.style.height = '300px';
+    windowEl.style.top = '260px';
+    windowEl.style.right = '16px';
+    windowEl.style.left = 'auto';
+    windowEl.style.bottom = 'auto';
+    
+    // Move back to main app
+    appEl.appendChild(windowEl);
+    const placeholder = document.getElementById('leaderboard-placeholder');
+    if (placeholder) {
+      placeholder.classList.remove('active');
+    }
+    
+    this.embedded = false;
+    
+    const header = windowEl.querySelector('h3');
+    if (header) {
+      header.textContent = 'Leaderboard ▲';
+    }
+    
+    this.separateFromOther();
+  }
+
+  autoAdjustHeight() {
+    if (this.userResized || this.embedded) return;
+    // Let the container size to content up to 10 items (we already cap rendering at 10)
+    this.element.style.height = 'auto';
+  }
+
   update() {
     this.calculateCounts();
     this.render();
+    this.autoAdjustHeight();
   }
 
   calculateCounts() {
