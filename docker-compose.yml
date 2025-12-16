@@ -1,6 +1,28 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: infinitego-postgres
+    environment:
+      - POSTGRES_DB=infinitego
+      - POSTGRES_USER=infinitego
+      - POSTGRES_PASSWORD=infinitego_password
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./rt-sand-mvp/server/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - infinitego-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infinitego"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   server:
     build:
       context: ./rt-sand-mvp/server
@@ -9,8 +31,17 @@ services:
       - "8080:8080"
     environment:
       - GO_ENV=docker
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=infinitego
+      - DB_USER=infinitego
+      - DB_PASSWORD=infinitego_password
+      - DB_SSLMODE=disable
     networks:
       - infinitego-network
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/rooms"]
@@ -40,3 +71,7 @@ services:
 networks:
   infinitego-network:
     driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
