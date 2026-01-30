@@ -11,8 +11,11 @@ export class InputManager {
     this.dragging = false;
     this.dragStart = { x: 0, y: 0 };
     this.edgeScrollVelocity = { x: 0, y: 0 };
+    this.keysPressed = new Set();
+    this.lastDrawnPosition = null; // Track last position for continuous drawing
     
     this.setupEventListeners();
+    this.startKeyboardScrolling();
   }
 
   setupEventListeners() {
@@ -22,9 +25,9 @@ export class InputManager {
     this.canvas.addEventListener('wheel', (e) => this.handleWheel(e));
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     
-    // Click to place stone
+    // Click to place stone (only in pan mode, draw mode handles it in mousedown/move)
     this.canvas.addEventListener('click', (e) => {
-      if (!this.dragging) {
+      if (!this.dragging && this.state.dragMode === 'pan') {
         const rect = this.canvas.getBoundingClientRect();
         const sx = e.clientX - rect.left;
         const sy = e.clientY - rect.top;
@@ -37,31 +40,63 @@ export class InputManager {
     window.addEventListener('mouseup', () => {
       if (this.dragging) {
         this.dragging = false;
+        this.lastDrawnPosition = null;
         this.canvas.style.cursor = 'crosshair';
       }
     });
 
     // Edge scrolling
     this.startEdgeScrolling();
+    
+    // Keyboard events for arrow key scrolling
+    window.addEventListener('keydown', (e) => this.handleKeyDown(e));
+    window.addEventListener('keyup', (e) => this.handleKeyUp(e));
   }
 
   handleMouseDown(e) {
     if (e.button === 0) {
-      // Left click - start drag
       this.dragging = true;
       this.dragStart = { x: e.clientX, y: e.clientY };
-      this.canvas.style.cursor = 'grabbing';
+      
+      if (this.state.dragMode === 'draw') {
+        // Draw mode - place stone immediately and track position
+        const rect = this.canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const { x, y } = this.renderer.screenToWorld(sx, sy);
+        this.onAction('place_stone', { x, y, color: this.state.selectedColor });
+        this.lastDrawnPosition = { x, y };
+        this.canvas.style.cursor = 'crosshair';
+      } else {
+        // Pan mode - prepare to drag map
+        this.canvas.style.cursor = 'grabbing';
+      }
     }
   }
 
   handleMouseMove(e) {
     if (this.dragging) {
-      const dx = e.clientX - this.dragStart.x;
-      const dy = e.clientY - this.dragStart.y;
-      this.state.pan.x += dx;
-      this.state.pan.y += dy;
-      this.dragStart = { x: e.clientX, y: e.clientY };
-      this.state.saveViewState();
+      if (this.state.dragMode === 'draw') {
+        // Draw mode - place stones continuously as mouse moves
+        const rect = this.canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const { x, y } = this.renderer.screenToWorld(sx, sy);
+        
+        // Only place if position changed (avoid duplicate placements)
+        if (!this.lastDrawnPosition || this.lastDrawnPosition.x !== x || this.lastDrawnPosition.y !== y) {
+          this.onAction('place_stone', { x, y, color: this.state.selectedColor });
+          this.lastDrawnPosition = { x, y };
+        }
+      } else {
+        // Pan mode - drag the map
+        const dx = e.clientX - this.dragStart.x;
+        const dy = e.clientY - this.dragStart.y;
+        this.state.pan.x += dx;
+        this.state.pan.y += dy;
+        this.dragStart = { x: e.clientX, y: e.clientY };
+        this.state.saveViewState();
+      }
     }
   }
 
@@ -87,6 +122,42 @@ export class InputManager {
       this.state.scale = newScale;
       this.state.saveViewState();
     }
+  }
+
+  handleKeyDown(e) {
+    // Arrow keys for viewport movement
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      e.preventDefault();
+      this.keysPressed.add(e.key);
+    }
+  }
+
+  handleKeyUp(e) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      this.keysPressed.delete(e.key);
+    }
+  }
+
+  startKeyboardScrolling() {
+    setInterval(() => {
+      if (!document.hasFocus() || this.keysPressed.size === 0) {
+        return;
+      }
+
+      const speed = CONFIG.KEYBOARD_SCROLL_SPEED;
+      let dx = 0, dy = 0;
+
+      if (this.keysPressed.has('ArrowLeft')) dx += speed;
+      if (this.keysPressed.has('ArrowRight')) dx -= speed;
+      if (this.keysPressed.has('ArrowUp')) dy += speed;
+      if (this.keysPressed.has('ArrowDown')) dy -= speed;
+
+      if (dx !== 0 || dy !== 0) {
+        this.state.pan.x += dx;
+        this.state.pan.y += dy;
+        this.state.saveViewState();
+      }
+    }, 16);
   }
 
   startEdgeScrolling() {

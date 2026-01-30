@@ -106,12 +106,10 @@ canvas {
 }
 
 #sidebar.hidden ~ .sidebar-resize-handle {
-  transform: translateX(-400px);
   pointer-events: none;
 }
 
 #sidebar.hidden {
-  transform: translateX(-400px);
   pointer-events: none;
 }
 
@@ -130,18 +128,25 @@ canvas {
 }
 
 #menu-close {
-  background: none;
-  border: none;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
   color: var(--text);
-  font-size: 20px;
+  font-size: 16px;
   cursor: pointer;
   padding: 0;
   width: 30px;
   height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
 }
 
 #menu-close:hover {
   color: var(--accent);
+  border-color: var(--accent);
+  background: var(--panel);
 }
 
 #sidebar > :not(.sidebar-header) {
@@ -251,6 +256,10 @@ canvas {
   overflow: hidden;
 }
 
+#minimap-float.animating {
+  transition: left 0.3s ease-out, top 0.3s ease-out;
+}
+
 #minimap-float h3 {
   margin: 0 0 8px 0;
   color: var(--text);
@@ -313,6 +322,10 @@ canvas {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+#leaderboard-float.animating {
+  transition: left 0.3s ease-out, top 0.3s ease-out;
 }
 
 #leaderboard-float h3 {
@@ -462,7 +475,8 @@ button.active {
   box-shadow: 0 0 0 3px var(--accent);
 }
 
-.mode-btn {
+.mode-btn,
+.drag-mode-btn {
   flex: 1;
 }
 
@@ -501,13 +515,16 @@ select:focus {
   width: 100% !important;
   height: auto !important;
   margin-bottom: 16px;
-  margin-right: 16px;
+  margin-left: 0;
+  margin-right: 0;
   border-radius: 6px;
   padding: 12px;
   left: auto !important;
   top: auto !important;
   right: auto !important;
   bottom: auto !important;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 #minimap-float.embedded h3,
@@ -518,6 +535,7 @@ select:focus {
 
 #minimap-float.embedded canvas {
   width: 100%;
+  aspect-ratio: 1 / 1;
   height: auto !important;
   border-radius: 4px;
 }

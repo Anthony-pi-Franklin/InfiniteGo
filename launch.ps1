@@ -3,7 +3,7 @@
 
 param(
     [Parameter(Mandatory=$false)]
-    [ValidateSet('up', 'down', 'restart', 'logs', 'clean')]
+    [ValidateSet('up', 'down', 'restart', 'logs', 'clean', 'rebuild')]
     [string]$Action = 'up'
 )
 
@@ -47,6 +47,8 @@ function Test-DockerDaemon {
 }
 
 function Deploy-Services {
+    param([bool]$ForceRebuild = $false)
+    
     Write-Status 'Starting InfiniteGo services...' 'BUILD'
     
     # Check for docker-compose.yml
@@ -55,18 +57,20 @@ function Deploy-Services {
         exit 1
     }
     
-    # Pull latest images and build
-    Write-Status 'Pulling images and building...' 'BUILD'
-    docker-compose pull
-    docker-compose build --no-cache
-    
-    # Start services
-    Write-Status 'Starting containers...' 'BUILD'
-    docker-compose up -d
+    # Build and start services
+    # Using --build to rebuild only when source files change (uses Docker cache)
+    if ($ForceRebuild) {
+        Write-Status 'Force rebuilding all images (no cache)...' 'BUILD'
+        docker-compose build --no-cache
+        docker-compose up -d
+    } else {
+        Write-Status 'Building and starting services (with cache)...' 'BUILD'
+        docker-compose up -d --build
+    }
     
     # Wait for services to be ready
     Write-Status 'Waiting for services to be ready...' 'BUILD'
-    Start-Sleep -Seconds 3
+    Start-Sleep -Seconds 2
     
     # Check if services are running
     $running = docker-compose ps --services --filter "status=running"
@@ -79,17 +83,15 @@ function Deploy-Services {
     Write-Status '========================================' 'INFO'
     Write-Status 'InfiniteGo Services Started' 'INFO'
     Write-Status '========================================' 'INFO'
-    Write-Status 'Client (Nginx):  http://localhost:8081' 'INFO'
-    Write-Status 'Server API:      http://localhost:8080' 'INFO'
-    Write-Status 'Lobby:           http://localhost:8081/lobby.html' 'INFO'
-    Write-Status 'API Rooms:       http://localhost:8080/api/rooms' 'INFO'
+    Write-Status 'Lobby:           http://localhost:8081' 'INFO'
+    Write-Status 'API Rooms:       http://localhost:8081/api/rooms' 'INFO'
     Write-Status '========================================' 'INFO'
     Write-Status '' 'INFO'
     
     # Open browser
     Write-Status 'Opening browser...' 'BUILD'
     Start-Sleep -Seconds 1
-    Start-Process 'http://localhost:8081/lobby.html'
+    Start-Process 'http://localhost:8081'
 }
 
 function Shutdown-Services {
@@ -104,7 +106,7 @@ function Restart-Services {
     Write-Status 'Services restarted' 'INFO'
     Start-Sleep -Seconds 2
     Write-Status 'Opening browser...' 'BUILD'
-    Start-Process 'http://localhost:8081/lobby.html'
+    Start-Process 'http://localhost:8081'
 }
 
 function Show-Logs {
@@ -144,7 +146,7 @@ try {
     
     switch ($Action) {
         'up' {
-            Deploy-Services
+            Deploy-Services -ForceRebuild $false
         }
         'down' {
             Shutdown-Services
@@ -152,7 +154,13 @@ try {
         'restart' {
             Shutdown-Services
             Start-Sleep -Seconds 2
-            Deploy-Services
+            Deploy-Services -ForceRebuild $false
+        }
+        'rebuild' {
+            Write-Status 'Performing full rebuild...' 'BUILD'
+            Shutdown-Services
+            Start-Sleep -Seconds 2
+            Deploy-Services -ForceRebuild $true
         }
         'logs' {
             Show-Logs
@@ -162,7 +170,7 @@ try {
         }
         default {
             Write-Status "Unknown action: $Action" 'WARNING'
-            Write-Status 'Available actions: up, down, restart, logs, clean' 'INFO'
+            Write-Status 'Available actions: up, down, restart, logs, clean, rebuild' 'INFO'
         }
     }
 } catch {

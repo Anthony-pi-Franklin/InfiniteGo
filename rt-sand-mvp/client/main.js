@@ -28,6 +28,16 @@ class InfiniteGoApp {
     this.initializeUI();
     this.setupComponents();
     this.setupControls();
+    
+    // Initial collision check after everything is loaded
+    setTimeout(() => {
+      if (this.minimap && this.minimap.separateFromOther) {
+        this.minimap.separateFromOther();
+      }
+      if (this.leaderboard && this.leaderboard.separateFromOther) {
+        this.leaderboard.separateFromOther();
+      }
+    }, 100);
   }
 
   initializeUI() {
@@ -98,10 +108,27 @@ class InfiniteGoApp {
     
     menuToggle.addEventListener('click', () => {
       sidebar.classList.remove('hidden');
+      sidebar.style.transform = '';
+      sidebarResizeHandle.style.transform = '';
       menuToggle.classList.remove('visible');
+      
+      // Trigger collision avoidance for floating panels after sidebar opens
+      setTimeout(() => {
+        if (this.minimap && this.minimap.separateFromOther) {
+          this.minimap.separateFromOther();
+        }
+        if (this.leaderboard && this.leaderboard.separateFromOther) {
+          this.leaderboard.separateFromOther();
+        }
+      }, 50);
     });
     
     menuClose.addEventListener('click', () => {
+      // Calculate the offset based on current sidebar width
+      const sidebarWidth = sidebar.offsetWidth;
+      const hideOffset = sidebarWidth + 32; // sidebar width + left margin + extra
+      sidebar.style.transform = `translateX(-${hideOffset}px)`;
+      sidebarResizeHandle.style.transform = `translateX(-${hideOffset}px)`;
       sidebar.classList.add('hidden');
       menuToggle.classList.add('visible');
     });
@@ -138,6 +165,17 @@ class InfiniteGoApp {
       });
 
       window.addEventListener('mouseup', () => {
+        if (isResizingSidebar) {
+          // Trigger collision avoidance after sidebar resize
+          setTimeout(() => {
+            if (this.minimap && this.minimap.separateFromOther) {
+              this.minimap.separateFromOther();
+            }
+            if (this.leaderboard && this.leaderboard.separateFromOther) {
+              this.leaderboard.separateFromOther();
+            }
+          }, 50);
+        }
         isResizingSidebar = false;
       });
 
@@ -156,6 +194,15 @@ class InfiniteGoApp {
       });
     });
 
+    // Drag mode buttons
+    document.querySelectorAll('.drag-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.state.dragMode = btn.dataset.dragmode;
+        document.querySelectorAll('.drag-mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
     // Restart button
     document.getElementById('restart-btn').addEventListener('click', () => {
       if (confirm('Clear entire board?')) {
@@ -167,6 +214,10 @@ class InfiniteGoApp {
     document.getElementById('reset-view-btn').addEventListener('click', () => {
       this.state.resetView();
       this.state.saveViewState();
+      
+      // Reset floating panel positions
+      if (this.minimap) this.minimap.resetPosition();
+      if (this.leaderboard) this.leaderboard.resetPosition();
     });
   }
 

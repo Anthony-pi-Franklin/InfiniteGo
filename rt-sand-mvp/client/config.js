@@ -20,6 +20,9 @@ export const CONFIG = {
   EDGE_MAX_SPEED: 20,
   EDGE_SCROLL_INTERVAL: 16,
   
+  // Keyboard scrolling
+  KEYBOARD_SCROLL_SPEED: 20,
+  
   // Leaderboard
   LEADERBOARD_COLLAPSED_LIMIT: 3,
   LEADERBOARD_EXPANDED_LIMIT: 10,

@@ -9,6 +9,7 @@ export class GameState {
     this.minimapScale = CONFIG.MINIMAP_DEFAULT_SCALE;
     this.pan = { x: 0, y: 0 };
     this.placementMode = 'intersection';
+    this.dragMode = 'pan'; // 'pan' or 'draw'
     this.selectedColor = 0; // ColorBlack
     
     this.loadViewState();
