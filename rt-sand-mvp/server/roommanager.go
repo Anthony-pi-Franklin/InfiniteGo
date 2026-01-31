@@ -86,6 +86,12 @@ func NewRoomManager(ctx context.Context) *RoomManager {
 		ctx:         ctx,
 		rateLimiter: NewIPRateLimiter(),
 	}
+
+	// 预创建公共房间，确保在大厅列表中始终可见
+	publicRoom := NewRoom()
+	rm.rooms[PublicRoomID] = publicRoom
+	go publicRoom.Run(rm.ctx)
+
 	// Start background goroutine to cleanup expired rooms
 	go rm.cleanupExpiredRooms(ctx)
 	// Start background goroutine to cleanup old rate limiter entries
@@ -250,16 +256,31 @@ func (rm *RoomManager) GetRoomInfoList() []RoomInfo {
 	defer rm.mu.RUnlock()
 
 	infos := make([]RoomInfo, 0, len(rm.rooms))
+	var publicRoom *RoomInfo
+
 	for id, room := range rm.rooms {
 		room.clMu.RLock()
 		count := len(room.clients)
 		room.clMu.RUnlock()
 
-		infos = append(infos, RoomInfo{
+		info := RoomInfo{
 			ID:          id,
 			PlayerCount: count,
-		})
+		}
+
+		// 公共房间单独保存，确保排在最前面
+		if id == PublicRoomID {
+			publicRoom = &info
+		} else {
+			infos = append(infos, info)
+		}
 	}
+
+	// 公共房间放在列表最前面
+	if publicRoom != nil {
+		infos = append([]RoomInfo{*publicRoom}, infos...)
+	}
+
 	return infos
 }
 

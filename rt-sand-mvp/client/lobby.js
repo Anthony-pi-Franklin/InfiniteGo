@@ -37,7 +37,7 @@ class LobbyApp {
 
       // Validate room ID
       if (!this.isValidRoomId(roomId)) {
-        alert('房间名称只能包含字母、数字、下划线和连字符，长度为 1-50 个字符');
+  		alert('房间名称只能包含字母、数字、下划线和连字符，长度为 1-128 个字符');
         return;
       }
 
@@ -142,8 +142,8 @@ class LobbyApp {
   }
 
   isValidRoomId(roomId) {
-    // Only allow alphanumeric, underscore, and hyphen, 1-50 chars
-    return /^[a-zA-Z0-9_-]{1,50}$/.test(roomId);
+    // Only allow alphanumeric, underscore, and hyphen, 1-128 chars
+    return /^[a-zA-Z0-9_-]{1,128}$/.test(roomId);
   }
 
   escapeHtml(text) {
