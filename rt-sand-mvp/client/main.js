@@ -1,12 +1,16 @@
-// Main application entry point
+// Main application entry point - Refactored
 import { CONFIG } from './config.js';
 import { GameState } from './state.js';
 import { NetworkManager } from './net.js';
 import { Renderer } from './render.js';
 import { InputManager } from './input.js';
-import { Minimap } from './minimap.js';
-import { Leaderboard } from './leaderboard.js';
+import { eventBus, Events } from './core/EventBus.js';
+import { MinimapPanel, LeaderboardPanel, uiManager } from './ui/index.js';
 
+/**
+ * InfiniteGoApp - Main application controller
+ * Coordinates all components through event bus
+ */
 class InfiniteGoApp {
   constructor() {
     this.state = new GameState();
@@ -16,7 +20,7 @@ class InfiniteGoApp {
     this.roomId = urlParams.get('room') || sessionStorage.getItem('roomId') || 'default';
     this.playerColor = Number(sessionStorage.getItem('playerColor') || '0');
     
-    // If no room in URL, redirect to lobby
+    // Redirect to lobby if no room specified
     if (!urlParams.get('room') && !sessionStorage.getItem('roomId')) {
       window.location.href = 'lobby.html';
       return;
@@ -25,23 +29,29 @@ class InfiniteGoApp {
     // Set selected color in state
     this.state.selectedColor = this.playerColor;
     
-    this.initializeUI();
-    this.setupComponents();
+    this.initialize();
+  }
+
+  /**
+   * Initialize all components
+   */
+  initialize() {
+    this.initializeCanvas();
+    this.initializeUIManager();
+    this.initializeComponents();
     this.setupControls();
+    this.setupEventSubscriptions();
     
-    // Initial collision check after everything is loaded
+    // Initial collision check
     setTimeout(() => {
-      if (this.minimap && this.minimap.separateFromOther) {
-        this.minimap.separateFromOther();
-      }
-      if (this.leaderboard && this.leaderboard.separateFromOther) {
-        this.leaderboard.separateFromOther();
-      }
+      uiManager.triggerPanelCollisionCheck();
     }, 100);
   }
 
-  initializeUI() {
-    // Set canvas sizes
+  /**
+   * Initialize canvas sizes
+   */
+  initializeCanvas() {
     const mainCanvas = document.getElementById('canvas');
     const minimapCanvas = document.getElementById('minimap');
     
@@ -56,13 +66,27 @@ class InfiniteGoApp {
     window.addEventListener('resize', resize);
   }
 
-  setupComponents() {
+  /**
+   * Initialize UI manager and panels
+   */
+  initializeUIManager() {
+    uiManager.initialize();
+    
+    // Display room info
+    uiManager.updateRoomInfo(this.roomId);
+    uiManager.updatePlayerColorDisplay(this.playerColor, CONFIG);
+  }
+
+  /**
+   * Initialize game components
+   */
+  initializeComponents() {
     // Main canvas renderer
     const mainCanvas = document.getElementById('canvas');
     this.renderer = new Renderer(mainCanvas, this.state);
     this.renderer.start();
 
-    // Network manager - connect with room and color
+    // Network manager
     this.network = new NetworkManager(this.state, (event, data) => {
       this.handleNetworkEvent(event, data);
     });
@@ -73,117 +97,30 @@ class InfiniteGoApp {
       this.handleInputAction(action, data);
     });
 
-    // Minimap
+    // Minimap panel
     const minimapCanvas = document.getElementById('minimap');
-    this.minimap = new Minimap(minimapCanvas, this.state);
+    this.minimap = new MinimapPanel(minimapCanvas, this.state);
     this.minimap.start();
+    uiManager.registerPanel('minimap', this.minimap);
 
-    // Leaderboard
+    // Leaderboard panel
     const leaderboardEl = document.getElementById('leaderboard-float');
-    this.leaderboard = new Leaderboard(leaderboardEl, this.state);
+    this.leaderboard = new LeaderboardPanel(leaderboardEl, this.state);
+    uiManager.registerPanel('leaderboard', this.leaderboard);
   }
 
+  /**
+   * Setup UI controls
+   */
   setupControls() {
-    // Display room info
-    document.getElementById('current-room').textContent = this.roomId;
-    this.updatePlayerColorDisplay();
-    
     // Leave room button
-    document.getElementById('leave-room-btn').addEventListener('click', () => {
+    document.getElementById('leave-room-btn')?.addEventListener('click', () => {
       if (confirm('Leave this room and return to lobby?')) {
         sessionStorage.removeItem('roomId');
         sessionStorage.removeItem('playerColor');
         window.location.href = 'lobby.html';
       }
     });
-    
-    // Menu toggle
-    const menuToggle = document.getElementById('menu-toggle');
-    const menuClose = document.getElementById('menu-close');
-    const sidebar = document.getElementById('sidebar');
-    
-    // Menu toggle button is hidden by default (sidebar shown)
-    menuToggle.classList.remove('visible');
-    sidebar.classList.remove('hidden');
-    
-    menuToggle.addEventListener('click', () => {
-      sidebar.classList.remove('hidden');
-      sidebar.style.transform = '';
-      sidebarResizeHandle.style.transform = '';
-      menuToggle.classList.remove('visible');
-      
-      // Trigger collision avoidance for floating panels after sidebar opens
-      setTimeout(() => {
-        if (this.minimap && this.minimap.separateFromOther) {
-          this.minimap.separateFromOther();
-        }
-        if (this.leaderboard && this.leaderboard.separateFromOther) {
-          this.leaderboard.separateFromOther();
-        }
-      }, 50);
-    });
-    
-    menuClose.addEventListener('click', () => {
-      // Calculate the offset based on current sidebar width
-      const sidebarWidth = sidebar.offsetWidth;
-      const hideOffset = sidebarWidth + 32; // sidebar width + left margin + extra
-      sidebar.style.transform = `translateX(-${hideOffset}px)`;
-      sidebarResizeHandle.style.transform = `translateX(-${hideOffset}px)`;
-      sidebar.classList.add('hidden');
-      menuToggle.classList.add('visible');
-    });
-
-    // Sidebar resize
-    const sidebarResizeHandle = document.querySelector('.sidebar-resize-handle');
-    let isResizingSidebar = false;
-    let startX = 0;
-    let startWidth = 0;
-
-    // Function to update resize handle position
-    function updateResizeHandlePosition() {
-      if (sidebarResizeHandle && sidebar) {
-        const sidebarWidth = sidebar.offsetWidth;
-        sidebarResizeHandle.style.left = `calc(16px + ${sidebarWidth}px - 5px)`;
-      }
-    }
-
-    if (sidebarResizeHandle) {
-      sidebarResizeHandle.addEventListener('mousedown', (e) => {
-        isResizingSidebar = true;
-        startX = e.clientX;
-        startWidth = sidebar.offsetWidth;
-        e.preventDefault();
-      });
-
-      window.addEventListener('mousemove', (e) => {
-        if (isResizingSidebar) {
-          const newWidth = startWidth + (e.clientX - startX);
-          const clampedWidth = Math.max(200, Math.min(500, newWidth));
-          sidebar.style.width = `${clampedWidth}px`;
-          updateResizeHandlePosition();
-        }
-      });
-
-      window.addEventListener('mouseup', () => {
-        if (isResizingSidebar) {
-          // Trigger collision avoidance after sidebar resize
-          setTimeout(() => {
-            if (this.minimap && this.minimap.separateFromOther) {
-              this.minimap.separateFromOther();
-            }
-            if (this.leaderboard && this.leaderboard.separateFromOther) {
-              this.leaderboard.separateFromOther();
-            }
-          }, 50);
-        }
-        isResizingSidebar = false;
-      });
-
-      // Initialize handle position
-      updateResizeHandlePosition();
-    }
-
-    // Color buttons - removed (players locked to their chosen color)
 
     // Mode buttons
     document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -204,83 +141,103 @@ class InfiniteGoApp {
     });
 
     // Restart button
-    document.getElementById('restart-btn').addEventListener('click', () => {
+    document.getElementById('restart-btn')?.addEventListener('click', () => {
       if (confirm('Clear entire board?')) {
         this.network.sendRestart();
       }
     });
 
     // Reset view button
-    document.getElementById('reset-view-btn').addEventListener('click', () => {
+    document.getElementById('reset-view-btn')?.addEventListener('click', () => {
       this.state.resetView();
       this.state.saveViewState();
-      
-      // Reset floating panel positions
-      if (this.minimap) this.minimap.resetPosition();
-      if (this.leaderboard) this.leaderboard.resetPosition();
+      uiManager.resetAllPanels();
     });
   }
 
-  updatePlayerColorDisplay() {
-    const colorNames = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Cyan', 'Pink'];
-    const colorDisplay = document.getElementById('player-color-display');
-    if (colorDisplay) {
-      colorDisplay.textContent = colorNames[this.playerColor] || `Color ${this.playerColor}`;
-      
-      // Set background and text color for contrast
-      const bgColors = ['#000', '#fff', '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#e67e22', '#1abc9c', '#e91e63'];
-      const textColors = ['#fff', '#000', '#fff', '#fff', '#fff', '#000', '#fff', '#fff', '#000', '#fff'];
-      
-      colorDisplay.style.backgroundColor = bgColors[this.playerColor] || '#888';
-      colorDisplay.style.color = textColors[this.playerColor] || '#fff';
-      
-      if (this.playerColor === 1) {
-        colorDisplay.style.border = '1px solid #666';
-      } else {
-        colorDisplay.style.border = 'none';
-      }
-    }
+  /**
+   * Setup event subscriptions
+   */
+  setupEventSubscriptions() {
+    // Subscribe to state changes for leaderboard updates
+    eventBus.on(Events.STATE_UPDATED, () => {
+      uiManager.updateSeq(this.state.seq);
+    });
   }
 
+  /**
+   * Handle network events
+   */
   handleNetworkEvent(event, data) {
     switch (event) {
       case 'status':
-        this.updateStatus(data);
+        uiManager.updateStatus(data);
         break;
       
       case 'delta':
+        eventBus.emit(Events.STATE_DELTA, data);
+        uiManager.updateSeq(this.state.seq);
+        break;
+      
       case 'board_state':
-        this.updateSeq();
-        this.leaderboard.update();
+        eventBus.emit(Events.STATE_BOARD, data);
+        uiManager.updateSeq(this.state.seq);
+        break;
+      
+      case 'room_info':
+        eventBus.emit(Events.ROOM_INFO_UPDATED, data);
+        break;
+      
+      case 'room_expired':
+        eventBus.emit(Events.ROOM_EXPIRED);
+        alert('房间已过期关闭，将返回大厅');
+        sessionStorage.removeItem('roomId');
+        sessionStorage.removeItem('playerColor');
+        window.location.href = 'lobby.html';
+        break;
+      
+      case 'connection_failed':
+        alert(data || '连接失败，请返回大厅重试');
+        sessionStorage.removeItem('roomId');
+        sessionStorage.removeItem('playerColor');
+        window.location.href = 'lobby.html';
+        break;
+      
+      case 'banned':
+        // 显示封禁消息并禁止操作
+        alert(data || '您已被临时封禁，请30分钟后再试');
+        sessionStorage.removeItem('roomId');
+        sessionStorage.removeItem('playerColor');
+        window.location.href = 'lobby.html';
         break;
       
       case 'restart':
-        this.updateStatus('Cleared your stones');
-        this.leaderboard.update();
+        eventBus.emit(Events.STATE_RESTART);
+        uiManager.updateStatus('Cleared your stones');
         break;
     }
   }
 
+  /**
+   * Handle input actions
+   */
   handleInputAction(action, data) {
     switch (action) {
       case 'place_stone':
         this.network.sendMove(data.x, data.y, data.color);
+        eventBus.emit(Events.INPUT_PLACE_STONE, data);
         break;
     }
   }
 
-  updateStatus(message) {
-    const statusEl = document.getElementById('status');
-    if (statusEl) {
-      statusEl.textContent = message;
-    }
-  }
-
-  updateSeq() {
-    const seqEl = document.getElementById('seq');
-    if (seqEl) {
-      seqEl.textContent = `Seq: ${this.state.seq}`;
-    }
+  /**
+   * Cleanup application
+   */
+  destroy() {
+    this.renderer?.stop();
+    this.minimap?.destroy();
+    uiManager.destroy();
+    eventBus.clear();
   }
 }
 

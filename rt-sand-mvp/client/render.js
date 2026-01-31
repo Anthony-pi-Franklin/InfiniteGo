@@ -1,6 +1,10 @@
 // Rendering logic for InfiniteGo
 import { CONFIG } from './config.js';
 
+// Time thresholds for expiration warnings
+const ONE_HOUR_MS = 60 * 60 * 1000;
+const TEN_MINUTES_MS = 10 * 60 * 1000;
+
 export class Renderer {
   constructor(canvas, state) {
     this.canvas = canvas;
@@ -29,6 +33,7 @@ export class Renderer {
     this.ctx.clearRect(0, 0, width, height);
     this.drawGrid();
     this.drawStones();
+    this.drawExpirationWarning();
   }
 
   drawGrid() {
@@ -112,5 +117,83 @@ export class Renderer {
     }
 
     return { x: sx, y: sy };
+  }
+
+  /**
+   * Draw expiration warning effects
+   * - Red edge glow when room is in last hour
+   * - Giant countdown overlay when in last 10 minutes
+   */
+  drawExpirationWarning() {
+    const remainingTime = this.state.getRemainingTime();
+    
+    // null means room never expires (public room)
+    if (remainingTime === null) {
+      return;
+    }
+
+    const { width, height } = this.canvas;
+    const ctx = this.ctx;
+
+    // Draw red edge glow when in last hour
+    if (remainingTime <= ONE_HOUR_MS) {
+      // Calculate intensity based on remaining time (stronger as time decreases)
+      const intensity = 1 - (remainingTime / ONE_HOUR_MS);
+      const edgeWidth = 20 + intensity * 20; // 20-40px edge glow (reduced from 60-100)
+      const alpha = 0.08 + intensity * 0.22; // 0.08-0.3 alpha (reduced)
+
+      // Create gradient for each edge
+      // Top edge
+      const topGradient = ctx.createLinearGradient(0, 0, 0, edgeWidth);
+      topGradient.addColorStop(0, `rgba(255, 0, 0, ${alpha})`);
+      topGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+      ctx.fillStyle = topGradient;
+      ctx.fillRect(0, 0, width, edgeWidth);
+
+      // Bottom edge
+      const bottomGradient = ctx.createLinearGradient(0, height, 0, height - edgeWidth);
+      bottomGradient.addColorStop(0, `rgba(255, 0, 0, ${alpha})`);
+      bottomGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+      ctx.fillStyle = bottomGradient;
+      ctx.fillRect(0, height - edgeWidth, width, edgeWidth);
+
+      // Left edge
+      const leftGradient = ctx.createLinearGradient(0, 0, edgeWidth, 0);
+      leftGradient.addColorStop(0, `rgba(255, 0, 0, ${alpha})`);
+      leftGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+      ctx.fillStyle = leftGradient;
+      ctx.fillRect(0, 0, edgeWidth, height);
+
+      // Right edge
+      const rightGradient = ctx.createLinearGradient(width, 0, width - edgeWidth, 0);
+      rightGradient.addColorStop(0, `rgba(255, 0, 0, ${alpha})`);
+      rightGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+      ctx.fillStyle = rightGradient;
+      ctx.fillRect(width - edgeWidth, 0, edgeWidth, height);
+    }
+
+    // Draw giant countdown overlay when in last 10 minutes
+    if (remainingTime <= TEN_MINUTES_MS) {
+      const minutes = Math.floor(remainingTime / 60000);
+      const seconds = Math.floor((remainingTime % 60000) / 1000);
+      const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+      // Calculate font size to fill most of the screen
+      const fontSize = Math.min(width, height) * 0.35;
+      
+      // Draw giant countdown text as watermark
+      ctx.save();
+      ctx.fillStyle = 'rgba(139, 0, 0, 0.15)'; // Semi-transparent dark red
+      ctx.font = `bold ${fontSize}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(timeStr, width / 2, height / 2);
+      
+      // Draw smaller label below
+      ctx.font = `${fontSize * 0.12}px sans-serif`;
+      ctx.fillStyle = 'rgba(139, 0, 0, 0.25)';
+      ctx.fillText('房间即将关闭', width / 2, height / 2 + fontSize * 0.45);
+      ctx.restore();
+    }
   }
 }

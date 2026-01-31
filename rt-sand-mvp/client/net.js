@@ -9,15 +9,19 @@ export class NetworkManager {
     this.connecting = false;
     this.roomId = null;
     this.playerColor = null;
+    this.roomExpired = false; // Flag to prevent reconnection after room expires
   }
 
   connect(roomId, playerColor) {
+    if (this.roomExpired) {
+      return; // Don't reconnect after room expired
+    }
     if (this.connecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
       return;
     }
 
     // Store room and color info
-    this.roomId = roomId || 'default';
+    this.roomId = roomId || 'public';
     this.playerColor = playerColor !== undefined ? playerColor : 0;
 
     this.connecting = true;
@@ -39,9 +43,22 @@ export class NetworkManager {
       this.onStateUpdate('status', `Connected to room: ${this.roomId}`);
     };
 
-    this.ws.onclose = () => {
-      console.log('WebSocket disconnected');
+    this.ws.onclose = (event) => {
+      console.log('WebSocket disconnected, code:', event.code);
       this.connecting = false;
+      
+      // HTTP 429 Too Many Requests causes close with code 1006
+      // Check if this is a rate limit error by trying to detect the pattern
+      if (event.code === 1006 && !this.hasConnectedBefore) {
+        // First connection attempt failed - might be rate limited
+        this.onStateUpdate('connection_failed', '连接失败，可能是创建房间过于频繁，请稍后再试');
+        return;
+      }
+      
+      if (this.roomExpired) {
+        // Room expired, don't reconnect
+        return;
+      }
       this.onStateUpdate('status', 'Disconnected. Reconnecting...');
       setTimeout(() => this.connect(this.roomId, this.playerColor), CONFIG.WS_RECONNECT_DELAY);
     };
@@ -52,6 +69,7 @@ export class NetworkManager {
     };
 
     this.ws.onmessage = (event) => {
+      this.hasConnectedBefore = true; // Mark that we've successfully received a message
       try {
         const msg = JSON.parse(event.data);
         this.handleMessage(msg);
@@ -82,11 +100,31 @@ export class NetworkManager {
           this.state.applyBoardState(msg.board_state);
           this.onStateUpdate('board_state', msg.board_state);
         }
+        // Update room info if present
+        if (msg.room_info) {
+          this.state.setRoomInfo(msg.room_info);
+          this.onStateUpdate('room_info', msg.room_info);
+        }
+        break;
+
+      case 'room_expired':
+        this.roomExpired = true; // Prevent reconnection
+        this.onStateUpdate('room_expired');
         break;
 
       case 'move_result':
         if (msg.move_result && !msg.move_result.accepted) {
-          this.onStateUpdate('status', `Move failed: ${msg.move_result.reason || 'unknown'}`);
+          const reason = msg.move_result.reason || 'unknown';
+          // 处理反作弊相关的错误
+          if (reason === 'move_too_fast') {
+            this.onStateUpdate('status', '落子过快，请稍候');
+          } else if (reason === 'rate_limited') {
+            this.onStateUpdate('status', '操作过于频繁，请稍候');
+          } else if (reason === 'banned_cheating') {
+            this.onStateUpdate('banned', '检测到异常行为，您已被临时封禁');
+          } else {
+            this.onStateUpdate('status', `Move failed: ${reason}`);
+          }
         } else if (msg.move_result && msg.move_result.accepted) {
           this.onStateUpdate('status', 'Move accepted');
         }

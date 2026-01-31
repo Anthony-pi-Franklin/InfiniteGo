@@ -266,18 +266,11 @@ input[type="text"]:focus {
   color: #e74c3c;
 }
 
-/* Quick Join */
-.quick-join-form {
-  display: flex;
-  gap: 10px;
-}
-
-.quick-join-form input {
-  flex: 1;
-}
-
-.quick-join-form .btn {
-  width: auto;
+/* Input hint */
+.input-hint {
+  font-size: 0.85rem;
+  color: #7f8c8d;
+  margin-top: 8px;
   white-space: nowrap;
 }
 

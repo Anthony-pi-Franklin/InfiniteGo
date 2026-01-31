@@ -1,12 +1,25 @@
 // Configuration constants for InfiniteGo
+// Centralized configuration for easy maintenance and extensibility
+
+/**
+ * @typedef {Object} ColorConfig
+ * @property {string} fill - Fill color for stones
+ * @property {string} stroke - Stroke color for stones
+ * @property {string} name - Display name
+ */
+
+/**
+ * Main configuration object
+ */
 export const CONFIG = {
-  // Canvas and rendering
+  // ==================== Canvas and Rendering ====================
   DEFAULT_SCALE: 24,
   MIN_SCALE: 6,
   MAX_SCALE: 80,
   ZOOM_FACTOR: 1.1,
+  STONE_RADIUS_RATIO: 0.45,
   
-  // Minimap
+  // ==================== Minimap ====================
   MINIMAP_WIDTH: 200,
   MINIMAP_HEIGHT: 200,
   MINIMAP_DEFAULT_SCALE: 3,
@@ -15,22 +28,30 @@ export const CONFIG = {
   MINIMAP_PADDING: 5,
   MINIMAP_MIN_WINDOW_SIZE: 100,
   
-  // Edge scrolling
+  // ==================== Scrolling ====================
   EDGE_THRESHOLD: 100,
   EDGE_MAX_SPEED: 20,
   EDGE_SCROLL_INTERVAL: 16,
-  
-  // Keyboard scrolling
   KEYBOARD_SCROLL_SPEED: 20,
   
-  // Leaderboard
+  // ==================== Leaderboard ====================
   LEADERBOARD_COLLAPSED_LIMIT: 3,
   LEADERBOARD_EXPANDED_LIMIT: 10,
   
-  // Stone rendering
-  STONE_RADIUS_RATIO: 0.45,
+  // ==================== UI Panels ====================
+  PANEL_GAP: 8,
+  PANEL_MIN_WIDTH: 100,
+  PANEL_MIN_HEIGHT: 100,
+  SIDEBAR_MIN_WIDTH: 200,
+  SIDEBAR_MAX_WIDTH: 500,
   
-// Colors (0-9, 10 total colors)
+  // ==================== Network ====================
+  WS_RECONNECT_DELAY: 2000,
+  
+  // ==================== Storage ====================
+  STORAGE_KEY: 'infinitego-view',
+  
+  // ==================== Color Definitions ====================
   COLORS: {
     BLACK: 0,
     WHITE: 1,
@@ -83,9 +104,41 @@ export const CONFIG = {
     9: '#831843',
   },
   
-  // WebSocket
-  WS_RECONNECT_DELAY: 2000,
+  // ==================== UI Display Colors ====================
+  UI_BG_COLORS: {
+    0: '#000', 1: '#fff', 2: '#e74c3c', 3: '#3498db', 4: '#2ecc71',
+    5: '#f39c12', 6: '#9b59b6', 7: '#e67e22', 8: '#1abc9c', 9: '#e91e63'
+  },
   
-  // Storage
-  STORAGE_KEY: 'infinitego-view',
+  UI_TEXT_COLORS: {
+    0: '#fff', 1: '#000', 2: '#fff', 3: '#fff', 4: '#fff',
+    5: '#000', 6: '#fff', 7: '#fff', 8: '#000', 9: '#fff'
+  },
 };
+
+/**
+ * Get color configuration by color ID
+ * @param {number} colorId - Color ID (0-9)
+ * @returns {ColorConfig} Color configuration
+ */
+export function getColorConfig(colorId) {
+  return {
+    fill: CONFIG.STONE_COLORS[colorId] || '#888',
+    stroke: CONFIG.STONE_STROKE_COLORS[colorId] || '#666',
+    name: CONFIG.COLOR_NAMES[colorId] || `Color ${colorId}`,
+    uiBg: CONFIG.UI_BG_COLORS[colorId] || '#888',
+    uiText: CONFIG.UI_TEXT_COLORS[colorId] || '#fff',
+  };
+}
+
+/**
+ * Get all available colors
+ * @returns {Array<{id: number, name: string}>}
+ */
+export function getAvailableColors() {
+  return Object.entries(CONFIG.COLORS).map(([name, id]) => ({
+    id,
+    name: CONFIG.COLOR_NAMES[id],
+    ...getColorConfig(id),
+  }));
+}

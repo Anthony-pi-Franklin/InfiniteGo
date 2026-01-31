@@ -7,8 +7,7 @@ class LobbyApp {
 
   init() {
     this.setupColorPicker();
-    this.setupCreateRoom();
-    this.setupQuickJoin();
+    this.setupJoinRoom();
     this.setupRoomList();
     this.loadRooms();
   }
@@ -24,16 +23,16 @@ class LobbyApp {
     });
   }
 
-  setupCreateRoom() {
-    const createBtn = document.getElementById('create-btn');
+  setupJoinRoom() {
+    const joinBtn = document.getElementById('join-btn');
     const roomIdInput = document.getElementById('room-id');
 
-    createBtn.addEventListener('click', () => {
+    joinBtn.addEventListener('click', () => {
       let roomId = roomIdInput.value.trim();
       
-      // Generate random room ID if not provided
+      // Use public room if not provided
       if (!roomId) {
-        roomId = this.generateRoomId();
+        roomId = 'public';
       }
 
       // Validate room ID
@@ -45,38 +44,10 @@ class LobbyApp {
       this.joinRoom(roomId);
     });
 
-    // Allow Enter key to create room
+    // Allow Enter key to join room
     roomIdInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
-        createBtn.click();
-      }
-    });
-  }
-
-  setupQuickJoin() {
-    const quickJoinBtn = document.getElementById('quick-join-btn');
-    const joinRoomIdInput = document.getElementById('join-room-id');
-
-    quickJoinBtn.addEventListener('click', () => {
-      const roomId = joinRoomIdInput.value.trim();
-      
-      if (!roomId) {
-        alert('请输入房间名称');
-        return;
-      }
-
-      if (!this.isValidRoomId(roomId)) {
-        alert('房间名称只能包含字母、数字、下划线和连字符');
-        return;
-      }
-
-      this.joinRoom(roomId);
-    });
-
-    // Allow Enter key to join room
-    joinRoomIdInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        quickJoinBtn.click();
+        joinBtn.click();
       }
     });
   }

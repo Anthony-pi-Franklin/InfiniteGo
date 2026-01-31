@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
+	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 type MoveRequest struct {
@@ -42,11 +45,19 @@ type BoardState struct {
 	ServerSeq uint64 `json:"server_seq"`
 }
 
+// RoomInfoMsg contains room metadata for clients
+type RoomInfoMsg struct {
+	CreatedAt  int64 `json:"created_at"`  // Unix timestamp in milliseconds
+	ExpireTime int64 `json:"expire_time"` // Duration in milliseconds (0 = never expires)
+	IsPublic   bool  `json:"is_public"`   // Whether this is the public room
+}
+
 type Envelope struct {
 	Type        string       `json:"type"`
 	MoveResult  *MoveResult  `json:"move_result,omitempty"`
 	DeltaUpdate *DeltaUpdate `json:"delta_update,omitempty"`
 	BoardState  *BoardState  `json:"board_state,omitempty"`
+	RoomInfo    *RoomInfoMsg `json:"room_info,omitempty"`
 }
 
 type coord struct {
@@ -54,13 +65,16 @@ type coord struct {
 }
 
 type Room struct {
-	Inbox        chan MoveRequest
-	StateInbox   chan GetStateRequest
-	ResetInbox   chan ResetRequest
-	Chunks       map[ChunkID]*Chunk
-	Seq          uint64
-	clients      map[*Client]struct{}
-	clMu         sync.RWMutex
+	Inbox      chan MoveRequest
+	StateInbox chan GetStateRequest
+	ResetInbox chan ResetRequest
+	Chunks     map[ChunkID]*Chunk
+	Seq        uint64
+	clients    map[*Client]struct{}
+	clMu       sync.RWMutex
+	CreatedAt  time.Time     // Time when the room was created
+	closeChan  chan struct{} // Channel to signal room closure
+	closed     bool
 }
 
 func NewRoom() *Room {
@@ -70,6 +84,9 @@ func NewRoom() *Room {
 		ResetInbox: make(chan ResetRequest, 16),
 		Chunks:     make(map[ChunkID]*Chunk),
 		clients:    make(map[*Client]struct{}),
+		CreatedAt:  time.Now(),
+		closeChan:  make(chan struct{}),
+		closed:     false,
 	}
 }
 
@@ -81,7 +98,8 @@ func (r *Room) Run(ctx context.Context) {
 		case req := <-r.StateInbox:
 			state := r.GetBoardState()
 			if req.Player != nil {
-				req.Player.sendEnvelope(Envelope{Type: "board_state", BoardState: &state})
+				roomInfo := r.GetRoomInfo(req.Player.roomID)
+				req.Player.sendEnvelope(Envelope{Type: "board_state", BoardState: &state, RoomInfo: &roomInfo})
 			}
 		case req := <-r.ResetInbox:
 			// Clear only the requesting player's color
@@ -89,7 +107,8 @@ func (r *Room) Run(ctx context.Context) {
 			r.broadcast(delta)
 			if req.Player != nil {
 				state := r.GetBoardState()
-				req.Player.sendEnvelope(Envelope{Type: "board_state", BoardState: &state})
+				roomInfo := r.GetRoomInfo(req.Player.roomID)
+				req.Player.sendEnvelope(Envelope{Type: "board_state", BoardState: &state, RoomInfo: &roomInfo})
 			}
 		case req := <-r.Inbox:
 			result := r.ProcessMove(req)
@@ -135,10 +154,73 @@ func (r *Room) removeClient(c *Client) {
 	delete(r.clients, c)
 }
 
+// Close marks the room as closed and kicks all players
+func (r *Room) Close() {
+	r.clMu.Lock()
+	if r.closed {
+		log.Printf("Room.Close() called but room already closed")
+		r.clMu.Unlock()
+		return
+	}
+	r.closed = true
+	close(r.closeChan)
+
+	clientCount := len(r.clients)
+	log.Printf("Room.Close() - closing room with %d clients", clientCount)
+
+	// Notify and disconnect all clients
+	for c := range r.clients {
+		log.Printf("Sending room_expired to client and closing connection...")
+		// Send room_expired message synchronously before closing
+		// We write directly to the connection instead of using the channel
+		// to ensure the message is sent before the connection is closed
+		payload, err := json.Marshal(Envelope{Type: "room_expired"})
+		if err == nil {
+			c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			err = c.conn.WriteMessage(websocket.TextMessage, payload)
+			if err != nil {
+				log.Printf("Failed to send room_expired message: %v", err)
+			} else {
+				log.Printf("Successfully sent room_expired message to client")
+			}
+		}
+		// Close the client's connection
+		c.conn.Close()
+		log.Printf("Client connection closed")
+	}
+	r.clMu.Unlock()
+}
+
+// IsClosed returns whether the room has been closed
+func (r *Room) IsClosed() bool {
+	r.clMu.RLock()
+	defer r.clMu.RUnlock()
+	return r.closed
+}
+
+// CloseChan returns the channel that signals room closure
+func (r *Room) CloseChan() <-chan struct{} {
+	return r.closeChan
+}
+
 func (r *Room) GetBoardState() BoardState {
 	return BoardState{
 		Cells:     r.getAllCells(),
 		ServerSeq: r.Seq,
+	}
+}
+
+// GetRoomInfo returns room information for the client
+func (r *Room) GetRoomInfo(roomID string) RoomInfoMsg {
+	isPublic := roomID == "public"
+	var expireTime int64 = 0
+	if !isPublic {
+		expireTime = int64(RoomExpireTime / time.Millisecond)
+	}
+	return RoomInfoMsg{
+		CreatedAt:  r.CreatedAt.UnixMilli(),
+		ExpireTime: expireTime,
+		IsPublic:   isPublic,
 	}
 }
 
